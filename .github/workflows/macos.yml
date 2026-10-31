@@ -6,6 +6,10 @@ on:
         description: Attach verified macOS builds to release v4.0.0
         type: boolean
         default: true
+      replace_initial_assets:
+        description: Replace initial macOS test assets only
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -20,6 +24,8 @@ jobs:
         run: build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
       - name: Render every skin in WebKit
         run: build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --render-test build/macos/previews
+      - name: Package macOS screenshots
+        run: ditto -c -k --norsrc --noextattr build/macos/previews dist/CodexMeter-macOS-previews.zip
       - uses: actions/upload-artifact@v4
         with:
           name: macOS-packages
@@ -27,6 +33,7 @@ jobs:
             dist/CodexMeter-macOS-universal.zip
             dist/CodexMeter-4.0-macOS-universal.dmg
             dist/SHA256SUMS-macOS.txt
+            dist/CodexMeter-macOS-previews.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -61,4 +68,9 @@ jobs:
       - name: Attach Mac downloads without replacing Windows assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload v4.0.0 dist/* --repo "$GITHUB_REPOSITORY"
+        run: |
+          if [ "${{ inputs.replace_initial_assets }}" = "true" ]; then
+            gh release upload v4.0.0 dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release upload v4.0.0 dist/* --repo "$GITHUB_REPOSITORY"
+          fi
