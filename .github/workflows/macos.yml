@@ -1,0 +1,64 @@
+name: Build macOS
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Attach verified macOS builds to release v4.0.0
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile universal app and create DMG
+        run: bash macos/build.sh
+      - name: Test Apple Silicon and all skin resources
+        run: build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
+      - name: Render every skin in WebKit
+        run: build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --render-test build/macos/previews
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macOS-packages
+          path: |
+            dist/CodexMeter-macOS-universal.zip
+            dist/CodexMeter-4.0-macOS-universal.dmg
+            dist/SHA256SUMS-macOS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macOS-previews
+          path: build/macos/previews
+          if-no-files-found: ignore
+  intel:
+    needs: build
+    runs-on: macos-15-intel
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS-packages
+          path: dist
+      - name: Verify Intel execution
+        run: |
+          ditto -x -k dist/CodexMeter-macOS-universal.zip unpacked
+          codesign --verify --deep --strict unpacked/CodexMeter.app
+          unpacked/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
+  publish:
+    if: inputs.publish
+    needs: [build, intel]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS-packages
+          path: dist
+      - name: Attach Mac downloads without replacing Windows assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload v4.0.0 dist/* --repo "$GITHUB_REPOSITORY"
