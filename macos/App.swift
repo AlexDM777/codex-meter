@@ -1,6 +1,7 @@
 import AppKit
 import WebKit
 import ServiceManagement
+import UniformTypeIdentifiers
 
 final class WidgetWebView: WKWebView {
     weak var owner: MeterApp?
@@ -35,7 +36,7 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
     var ready = Set<ObjectIdentifier>()
     let demo: Bool, renderDirectory: String?
     var renderIndex = 0, renderCapturing = false, resizing = false
-    init() {
+    override init() {
         root = Bundle.main.resourceURL ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         profile = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("CodexMeter", isDirectory: true)
         let args = CommandLine.arguments
