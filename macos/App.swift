@@ -36,6 +36,7 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
     var ready = Set<ObjectIdentifier>()
     let demo: Bool, renderDirectory: String?
     var renderIndex = 0, renderCapturing = false, resizing = false
+    var renderPhase = "widget"
     override init() {
         root = Bundle.main.resourceURL ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         profile = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("CodexMeter", isDirectory: true)
@@ -62,7 +63,7 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         rpc.notification = { [weak self] method, params in if method == "account/rateLimits/updated" { self?.usage = Usage.parse(params); self?.sendAll() }; if method == "account/login/completed" || method == "account/updated" { self?.refresh() } }
         rpc.disconnected = { [weak self] in self?.status = "Нет соединения • ПКМ: обновить"; self?.sendAll() }
         timers.append(Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.refresh() })
-        timers.append(Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in guard let self = self, self.hover.isVisible else { return }; let point = NSEvent.mouseLocation; let buttonFrame = self.statusItem.button.flatMap { $0.window?.convertToScreen($0.convert($0.bounds, to: nil)) } ?? .zero; if !self.hover.frame.insetBy(dx: -12, dy: -12).contains(point) && !buttonFrame.insetBy(dx: -12, dy: -16).contains(point) { self.hover.orderOut(nil) } })
+        timers.append(Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in guard let self = self, self.renderDirectory == nil, self.hover.isVisible else { return }; let point = NSEvent.mouseLocation; let buttonFrame = self.statusItem.button.flatMap { $0.window?.convertToScreen($0.convert($0.bounds, to: nil)) } ?? .zero; if !self.hover.frame.insetBy(dx: -12, dy: -12).contains(point) && !buttonFrame.insetBy(dx: -12, dy: -16).contains(point) { self.hover.orderOut(nil) } })
         if demo { signedIn = true; account = "demo@example.com"; usage = Usage(windows: [Quota(minutes: 300, remaining: 72, reset: Date().timeIntervalSince1970+15540), Quota(minutes: 10080, remaining: 67, reset: Date().timeIntervalSince1970+273960)], plan: "prolite", resets: 2); status = ""; if renderDirectory != nil { timers.append(Timer.scheduledTimer(withTimeInterval: 120, repeats: false) { _ in fputs("Render timed out\n", stderr); exit(1) }) } } else { connect(); timers.append(Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in self?.checkUpdates() }); timers.append(Timer.scheduledTimer(withTimeInterval: 21600, repeats: true) { [weak self] _ in self?.checkUpdates() }) }
     }
     func makeWeb(kind: String) -> WKWebView {
@@ -84,8 +85,20 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         guard widget != nil else { return }
         send(widgetWeb); send(hoverWeb); if let web = settingsWeb { send(web) }
         let q = selectedQuota(); let value = q.map { String(Int($0.remaining.rounded()))+"%" } ?? "—%"
-        statusItem.button?.title = value
-        if let skin = library.themes.first(where: { $0.id == (previewSkin ?? skinID) }), let hex = skin.values["accent"] as? String ?? skin.values["ink"] as? String { let color = NSColor(hex: hex); statusItem.button?.attributedTitle = NSAttributedString(string: value, attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold), .foregroundColor: q.map { $0.remaining < 10 ? NSColor.systemRed : $0.remaining < 20 ? NSColor.systemOrange : color } ?? color]) }
+        if let skin = library.themes.first(where: { $0.id == (previewSkin ?? skinID) }) {
+            let ink = NSColor(hex: skin.values["ink"] as? String ?? "#EDF5FA")
+            let color = q.map { $0.remaining < 10 ? NSColor.systemRed : $0.remaining < 20 ? NSColor.systemOrange : ink } ?? ink
+            let fills = ["lcd-green":"#D5EAC1","lcd-blue":"#C3E2FA","tape":"#FAD28B","glass-day":"#E8F1FA","glass-night":"#243444","beskar":"#292724","pilot":"#06170E","imperial":"#D9DAD5"]
+            let background = NSColor(hex: skin.values["fill"] as? String ?? fills[skin.id] ?? "#18232E")
+            let image = NSImage(size: NSSize(width: 46, height: 22), flipped: false) { rect in
+                background.setFill(); NSBezierPath(roundedRect: NSRect(x: 0, y: 2, width: 46, height: 18), xRadius: 5, yRadius: 5).fill()
+                let attributes: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold), .foregroundColor: color]
+                let text = value as NSString, size = text.size(withAttributes: attributes)
+                text.draw(at: NSPoint(x: (46-size.width)/2, y: (22-size.height)/2), withAttributes: attributes); return true
+            }
+            statusItem.button?.title = ""; statusItem.button?.image = image; statusItem.button?.imagePosition = .imageOnly
+            statusItem.button?.setAccessibilityLabel("CodexMeter " + value)
+        }
         if !resizing { resizeWidget() }
     }
     func selectedQuota() -> Quota? { selectedMinutes == 0 ? usage.windows.first(where: { $0.minutes == 10080 }) ?? usage.windows.last : usage.windows.first(where: { $0.minutes == selectedMinutes }) }
@@ -103,7 +116,8 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         sendAll()
     }
     func trayDoubleClick() { hover.orderOut(nil); if widget.isVisible && width >= 799 { widget.orderOut(nil) } else { widget.orderFrontRegardless(); if width < 799 { compactFrame = nil; toggleSize() } } }
-    func showHover() { guard let button = statusItem.button, let window = button.window else { return }; send(hoverWeb); let rect = window.convertToScreen(button.convert(button.bounds, to: nil)); let screen = window.screen?.visibleFrame ?? NSScreen.main!.visibleFrame; let h: CGFloat = usage.windows.count > 1 ? 570 : 420; let frame = NSRect(x: min(max(rect.midX-280, screen.minX), screen.maxX-560), y: max(screen.minY, rect.minY-h-8), width: 560, height: h); hover.setFrame(frame, display: true); hover.orderFrontRegardless() }
+    func hoverHeight() -> CGFloat { let ornate = library.themes.first(where: { $0.id == (previewSkin ?? skinID) })?.values["kind"] as? String == "space"; return (usage.windows.count > 1 ? 620 : 450) + (ornate ? 50 : 0) }
+    func showHover() { guard let button = statusItem.button, let window = button.window else { return }; send(hoverWeb); let rect = window.convertToScreen(button.convert(button.bounds, to: nil)); let screen = window.screen?.visibleFrame ?? NSScreen.main!.visibleFrame; let h = hoverHeight(); let frame = NSRect(x: min(max(rect.midX-280, screen.minX), screen.maxX-560), y: max(screen.minY, rect.minY-h-8), width: 560, height: h); hover.setFrame(frame, display: true); hover.orderFrontRegardless() }
     func connect() {
         guard !demo else { return }
         guard let url = CodexRPC.find(preferred: defaults["cli"] as? String ?? "") else { status = "Codex не найден • ПКМ: Путь к Codex…"; sendAll(); return }
@@ -157,12 +171,26 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         case "screenshot": screenshot()
         case "quit": NSApp.terminate(nil)
         case "painted": if renderDirectory != nil, renderIndex < library.themes.count, value as? String == library.themes[renderIndex].id, !renderCapturing { captureRender() }; return
+        case "hoverReady": if renderDirectory != nil, renderIndex < library.themes.count, value as? String == library.themes[renderIndex].id, renderPhase == "hover" { captureHoverRender() }; return
         case "renderError": if renderDirectory != nil { fputs("Image rendering failed\n", stderr); exit(1) }
         default: break
         }
         save(); sendAll()
     }
-    func renderNext() { guard renderDirectory != nil else { return }; if renderIndex >= library.themes.count { print("PASS: rendered all \(renderIndex) macOS skins"); NSApp.terminate(nil); return }; skinID = library.themes[renderIndex].id; width = 500; resizeWidget(); send(widgetWeb) }
-    func captureRender() { guard let directory = renderDirectory, renderIndex < library.themes.count else { return }; renderCapturing = true; let id = library.themes[renderIndex].id; widgetWeb.takeSnapshot(with: nil) { image, error in guard let image = image, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let data = rep.representation(using: .png, properties: [:]) else { fputs("Snapshot failed\n", stderr); exit(1) }; do { try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true); try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(id+".png")) } catch { exit(1) }; self.renderIndex += 1; self.renderCapturing = false; self.renderNext() } }
+    func renderNext() { guard renderDirectory != nil else { return }; if renderIndex >= library.themes.count { print("PASS: rendered all \(renderIndex) macOS skins"); NSApp.terminate(nil); return }; renderPhase = "widget"; skinID = library.themes[renderIndex].id; width = 500; resizeWidget(); send(widgetWeb) }
+    func captureRender() { guard let directory = renderDirectory, renderIndex < library.themes.count else { return }; renderCapturing = true; let id = library.themes[renderIndex].id; widgetWeb.takeSnapshot(with: nil) { image, error in guard let image = image, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let data = rep.representation(using: .png, properties: [:]) else { fputs("Snapshot failed\n", stderr); exit(1) }; do { try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true); try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(id+".png")) } catch { exit(1) }; self.renderPhase = "hover"; self.hover.setFrame(NSRect(x: 80, y: 80, width: 560, height: self.hoverHeight()), display: true); self.hover.orderFrontRegardless(); self.send(self.hoverWeb) } }
+    func captureHoverRender() {
+        guard let directory = renderDirectory, renderIndex < library.themes.count else { return }; renderPhase = "capturing-hover"
+        let id = library.themes[renderIndex].id
+        hoverWeb.evaluateJavaScript("document.querySelector('.panel').scrollHeight <= innerHeight") { value, error in
+            guard value as? Bool == true else { fputs("Hover content clipped: \(id)\n", stderr); exit(1) }
+            self.hoverWeb.takeSnapshot(with: nil) { image, error in
+                guard let image = image, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let data = rep.representation(using: .png, properties: [:]) else { exit(1) }
+                do { try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(id+"-hover.png")) } catch { exit(1) }
+                self.renderIndex += 1; self.renderCapturing = false; self.renderNext()
+            }
+        }
+    }
+
 }
 extension NSColor { convenience init(hex: String) { let s = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")); let n = UInt64(s, radix: 16) ?? 0xA1E2FF; self.init(srgbRed: Double((n>>16)&255)/255, green: Double((n>>8)&255)/255, blue: Double(n&255)/255, alpha: 1) } }
