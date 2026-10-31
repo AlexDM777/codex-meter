@@ -2,12 +2,12 @@
 
 # CodexMeter
 
-**Лимиты Codex — на рабочем столе и в трее.**  
+**Лимиты Codex — на рабочем столе и в трее / строке меню.**  
 Проценты, время до сброса и доступные сбросы. Одним взглядом.
 
-[**↓ Скачать для Windows**](https://github.com/AlexDM777/codex-meter/releases/latest) &nbsp; · &nbsp; [Все скины](#свой-характер) &nbsp; · &nbsp; [Как установить](#три-шага-до-первого-запуска)
+[**↓ Скачать для Windows**](https://github.com/AlexDM777/codex-meter/releases/latest) &nbsp; · &nbsp; [**↓ Скачать для Mac**](https://github.com/AlexDM777/codex-meter/releases/download/v4.0.0/CodexMeter-4.0-macOS-universal.dmg) &nbsp; · &nbsp; [Все скины](#свой-характер) &nbsp; · &nbsp; [Как установить](#три-шага-до-первого-запуска)
 
-Windows 10/11 · 16 скинов · 8 языков · переносная версия и установщик
+Windows 10/11 · macOS 13+ · 16 скинов · 8 языков
 
 </div>
 
@@ -75,10 +75,22 @@ Windows 10/11 · 16 скинов · 8 языков · переносная ве�
 ## Три шага до первого запуска
 
 1. Установите официальный **Codex** и хотя бы один раз запустите его.
-2. [Скачайте CodexMeter](https://github.com/AlexDM777/codex-meter/releases/latest): **Setup.exe** для обычной установки или **Portable.zip**, чтобы распаковать и запустить.
+2. [Скачайте CodexMeter](https://github.com/AlexDM777/codex-meter/releases/latest): для Windows — **Setup.exe** или **Portable.zip**; для Mac — **macOS-universal.dmg** или **macOS-universal.zip**.
 3. В настройках виджета выберите **«Войти в ChatGPT…»**.
 
-Вход виджета хранится отдельно от основного Codex. Данные аккаунта не включаются в дистрибутив. Нужны Windows 10/11 x64 и .NET Framework 4.8; встроенная копия Codex не поставляется.
+Вход виджета хранится отдельно от основного Codex. Данные аккаунта не включаются в дистрибутив. Windows-версии нужны Windows 10/11 x64 и .NET Framework 4.8. Mac-версии — macOS 13 или новее; один Universal-пакет поддерживает Apple Silicon и Intel. Встроенная копия Codex не поставляется.
+
+## Версия для Mac
+
+[**Скачать DMG для macOS →**](https://github.com/AlexDM777/codex-meter/releases/download/v4.0.0/CodexMeter-4.0-macOS-universal.dmg) · [ZIP с приложением](https://github.com/AlexDM777/codex-meter/releases/download/v4.0.0/CodexMeter-macOS-universal.zip) · [Полная инструкция](macos/MACOS.md)
+
+Откройте DMG и перенесите **CodexMeter.app** в **Applications («Программы»)**. После запуска проценты появятся в строке меню macOS. Наведение открывает карточку лимитов, ПКМ — меню, а в настройках можно войти в ChatGPT и выбрать скин. Если Codex не обнаружен, укажите его через «Путь к Codex…».
+
+Mac-приложение использует AppKit и системный WebKit — встроенного браузера и отдельной копии Codex в пакете нет. Сохранены 16 скинов, маленькие индикаторы, собственные темы, языки, снимок виджета и обновления. Настройки и пользовательские темы хранятся в `~/Library/Application Support/CodexMeter`.
+
+**Это первый Mac-выпуск:** обе архитектуры собраны и проверены на macOS-серверах GitHub, все 16 скинов отрисованы в WebKit. Авторизацию и живые лимиты на личном Mac пока не проверяли. Сборка имеет ad-hoc-подпись для целостности, но **не имеет Developer ID и нотариализации Apple**; macOS может ограничить первый запуск загруженного приложения. Не отключайте Gatekeeper. Ограничение подписи и самостоятельная сборка описаны в [инструкции для Mac](macos/MACOS.md).
+
+<sub>Скриншоты в витрине выше показывают Windows-версию. macOS-версия использует ту же библиотеку скинов с отдельной оболочкой.</sub>
 
 ## Удобно каждый день
 
