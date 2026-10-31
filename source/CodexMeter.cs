@@ -304,7 +304,7 @@ public class SingleInstance : IDisposable {
 }
 public partial class Widget : Window {
     readonly MeterFace face=new MeterFace(); readonly List<Skin> skins; readonly string data; Rpc rpc;
-    readonly DispatcherTimer updateTimer=new DispatcherTimer();AppUpdate appUpdate;bool autoUpdate=true;MenuItem updateMenu,autoUpdateMenu;
+    readonly DispatcherTimer updateTimer=new DispatcherTimer();readonly DispatcherTimer firstUpdateTimer=new DispatcherTimer();AppUpdate appUpdate;bool autoUpdate=true;MenuItem updateMenu,autoUpdateMenu;
     readonly DispatcherTimer timer=new DispatcherTimer(); readonly DispatcherTimer ageTimer=new DispatcherTimer();
     bool busy,connecting,closed,loggedIn,loginPending,demo; string accountPlan="",accountName=""; string loginId,loginUrl; DateTime lastUpdate=DateTime.MinValue; string connectionStatus="Подключение…";
     MenuItem pin; ContextMenu menu; Forms.NotifyIcon tray; System.Drawing.Icon appIcon,trayValueIcon; TrayHover trayHover; string trayIconKey="";
@@ -320,18 +320,18 @@ public partial class Widget : Window {
         appIcon=System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
         Icon=System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(appIcon.Handle,Int32Rect.Empty,BitmapSizeOptions.FromEmptyOptions());Icon.Freeze();
         appUpdate=new AppUpdate(root,data);appUpdate.Changed+=delegate{Ui(UpdateUpdateControls);};EnsureRecovery();BuildMenu();SetupTray();
-        if(systemSettings&&!demo){updateTimer.Interval=TimeSpan.FromHours(6);updateTimer.Tick+=async delegate{await CheckAppUpdate(false);};updateTimer.Start();}
+        if(systemSettings&&!demo){updateTimer.Interval=TimeSpan.FromHours(6);updateTimer.Tick+=async delegate{await CheckAppUpdate(false);};updateTimer.Start();firstUpdateTimer.Interval=TimeSpan.FromSeconds(15);firstUpdateTimer.Tick+=async delegate{firstUpdateTimer.Stop();if(!closed)await CheckAppUpdate(false);};firstUpdateTimer.Start();}
         face.ToolTip=Lang.T("Перетащите мышью • ПКМ: настройки • Колесо: размер");
         MouseLeftButtonDown+=delegate(object sender,MouseButtonEventArgs e){if(e.ClickCount==2){ToggleSize();e.Handled=true;return;}try{DragMove();SaveSettings();}catch{}};
         MouseWheel+=delegate(object sender,MouseWheelEventArgs e){SetWidth(Width+(e.Delta>0?40:-40));};
         Loaded+=async delegate {
             if(!demo){try{if(!hasStartupPreference || startupDesired&&!startup.Enabled){startup.Set(startupDesired);hasStartupPreference=true;SaveSettings();}}catch(Exception e){startupDesired=false;hasStartupPreference=true;SaveSettings();MessageBox.Show(this,"Не удалось включить автозапуск: "+e.Message,"Codex Meter");}}
             if(startHidden&&trayEnabled)Hide();
-            if(demo){face.Limits=Program.DemoLimits();Height=Width*face.Aspect(Width);face.Status="ДЕМО — пример значений";face.InvalidateVisual();return;}await Connect();if(systemSettings&&!closed){await Task.Delay(15000);if(!closed)await CheckAppUpdate(false);}
+            if(demo){face.Limits=Program.DemoLimits();Height=Width*face.Aspect(Width);face.Status="ДЕМО — пример значений";face.InvalidateVisual();return;}await Connect();
         };
         Closing+=delegate(object sender,System.ComponentModel.CancelEventArgs e){if(!exitRequested&&trayEnabled){e.Cancel=true;HideDisplay();}};
         StateChanged+=delegate{if(WindowState==WindowState.Minimized&&trayEnabled)HideDisplay();};
-        Closed+=delegate{if(resizeTimer!=null)resizeTimer.Stop();closed=true;updateTimer.Stop();timer.Stop();ageTimer.Stop();SaveSettings();if(tray!=null){tray.Visible=false;tray.Dispose();}if(trayHover!=null)trayHover.Dispose();if(trayValueIcon!=null)trayValueIcon.Dispose();if(appIcon!=null)appIcon.Dispose();if(rpc!=null)rpc.Dispose();};
+        Closed+=delegate{if(resizeTimer!=null)resizeTimer.Stop();closed=true;firstUpdateTimer.Stop();updateTimer.Stop();timer.Stop();ageTimer.Stop();SaveSettings();if(tray!=null){tray.Visible=false;tray.Dispose();}if(trayHover!=null)trayHover.Dispose();if(trayValueIcon!=null)trayValueIcon.Dispose();if(appIcon!=null)appIcon.Dispose();if(rpc!=null)rpc.Dispose();};
         timer.Interval=TimeSpan.FromSeconds(60);timer.Tick+=async delegate{if(rpc==null)await Connect();else await Refresh();};timer.Start();
         ageTimer.Interval=TimeSpan.FromSeconds(10);ageTimer.Tick+=delegate{UpdateStatus();};ageTimer.Start();
     }
