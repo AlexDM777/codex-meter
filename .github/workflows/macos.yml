@@ -3,13 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Attach verified macOS builds to release v4.0.0
+        description: Attach verified macOS builds to release v4.0.1
         type: boolean
         default: true
-      replace_initial_assets:
-        description: Replace initial macOS test assets only
-        type: boolean
-        default: false
 permissions:
   contents: read
 jobs:
@@ -22,24 +18,20 @@ jobs:
         run: bash macos/build.sh
       - name: Test Apple Silicon and all skin resources
         run: build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
-      - name: Render every skin in WebKit
-        run: build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --render-test build/macos/previews
-      - name: Package macOS screenshots
-        run: ditto -c -k --norsrc --noextattr build/macos/previews dist/CodexMeter-macOS-previews.zip
+      - name: Install official Codex CLI for authentication regression test
+        run: npm install --prefix "$RUNNER_TEMP/codex-runtime" @openai/codex
+      - name: Verify real Codex browser sign-in and reconnect
+        run: |
+          APP="$PWD/build/macos/CodexMeter.app/Contents/MacOS/CodexMeter"
+          cd /
+          "$APP" --rpc-test "$RUNNER_TEMP/codex-runtime/node_modules/.bin/codex"
       - uses: actions/upload-artifact@v4
         with:
           name: macOS-packages
           path: |
             dist/CodexMeter-macOS-universal.zip
-            dist/CodexMeter-4.0-macOS-universal.dmg
+            dist/CodexMeter-4.0.1-macOS-universal.dmg
             dist/SHA256SUMS-macOS.txt
-            dist/CodexMeter-macOS-previews.zip
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: macOS-previews
-          path: build/macos/previews
-          if-no-files-found: ignore
   intel:
     needs: build
     runs-on: macos-15-intel
@@ -69,8 +61,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ inputs.replace_initial_assets }}" = "true" ]; then
-            gh release upload v4.0.0 dist/* --clobber --repo "$GITHUB_REPOSITORY"
-          else
-            gh release upload v4.0.0 dist/* --repo "$GITHUB_REPOSITORY"
-          fi
+          gh release upload v4.0.1 dist/* --repo "$GITHUB_REPOSITORY"
