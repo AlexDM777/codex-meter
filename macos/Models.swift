@@ -2,10 +2,15 @@ import Foundation
 import AppKit
 import ImageIO
 
-let appVersion = "4.0.0"
+let appVersion = "4.0.1"
 let repository = "AlexDM777/codex-meter"
 let bundleIdentifier = "com.alexdm777.codexmeter"
 let languageCodes = ["ru", "en", "de", "it", "es", "sr", "fr", "pt"]
+func initialLanguage(saved: String?, preferred: [String] = Locale.preferredLanguages) -> String {
+    if let saved = saved, languageCodes.contains(saved) { return saved }
+    let first = (preferred.first ?? "en").replacingOccurrences(of: "_", with: "-").split(separator: "-").first.map(String.init)?.lowercased() ?? "en"
+    return languageCodes.contains(first) ? first : "en"
+}
 struct Quota {
     let minutes: Int
     let remaining: Double
@@ -81,6 +86,10 @@ final class Library {
 }
 func jsonString(_ value: Any) -> String { guard JSONSerialization.isValidJSONObject(value), let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]), let text = String(data: data, encoding: .utf8) else { return "{}" }; return text }
 func coreTests() throws {
+    for (tag, expected) in [("en-US","en"),("de-DE","de"),("ru-RU","ru"),("pt_BR","pt"),("sr-Latn-RS","sr"),("ja-JP","en")] {
+        guard initialLanguage(saved: nil, preferred: [tag]) == expected, initialLanguage(saved: "fr", preferred: [tag]) == "fr" else { throw NSError(domain: "Language tests", code: 1) }
+    }
+    print("PASS: system language, regional tags, English fallback, saved selection")
     let data: [String: Any] = ["rateLimitsByLimitId": ["codex": ["planType": "prolite", "primary": ["usedPercent": 17, "windowDurationMins": 300, "resetsAt": 1800000000], "secondary": ["usedPercent": 100, "windowDurationMins": 10080]]], "rateLimitResetCredits": ["availableCount": 2]]
     let value = Usage.parse(data)
     guard value.windows.count == 2, value.windows[0].remaining == 83, value.windows[1].remaining == 0, value.planLabel == "PRO $100", value.resets == 2, Usage.parse([:]).windows.isEmpty, Quota.parse(["usedPercent": -5])?.remaining == 100, Quota.parse(["usedPercent": 150])?.remaining == 0, Quota.parse([:]) == nil else { throw NSError(domain: "Tests", code: 1) }

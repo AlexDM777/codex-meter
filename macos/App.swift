@@ -26,6 +26,8 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
     var defaults: [String: Any] = [:]
     var usage = Usage()
     var signedIn = false, account = "", status = "Подключение…", loginID: String?
+    var connecting = false, loginBusy = false, authURL: URL?, connectionError = "", cliPath = ""
+    var connectionWaiters: [(Bool) -> Void] = []
     var width: CGFloat = 500
     var skinID = "glass-night", language = "ru", selectedMinutes = 0, pinned = true, randomSkin = false, autoUpdate = true, opacity = 1.0
     var previewSkin: String?, compactFrame: NSRect?
@@ -48,7 +50,7 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
     func applicationDidFinishLaunching(_ notification: Notification) {
         do { try FileManager.default.createDirectory(at: profile.appendingPathComponent("account"), withIntermediateDirectories: true); library = try Library(root: root, profile: profile) } catch { if renderDirectory != nil { fputs("Resource load failed: \(error)\n", stderr); exit(1) }; alert(error.localizedDescription); NSApp.terminate(nil); return }
         if let data = try? Data(contentsOf: profile.appendingPathComponent("settings.json")), let values = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] { defaults = values }
-        width = min(1000, max(100, CGFloat((defaults["width"] as? NSNumber)?.doubleValue ?? 500))); skinID = defaults["skin"] as? String ?? "glass-night"; language = defaults["language"] as? String ?? "ru"; if !languageCodes.contains(language) { language = "ru" }
+        width = min(1000, max(100, CGFloat((defaults["width"] as? NSNumber)?.doubleValue ?? 500))); skinID = defaults["skin"] as? String ?? "glass-night"; language = initialLanguage(saved: defaults["language"] as? String)
         selectedMinutes = defaults["selectedMinutes"] as? Int ?? 0; pinned = defaults["topmost"] as? Bool ?? true; randomSkin = defaults["randomSkinOnStartup"] as? Bool ?? false; autoUpdate = defaults["autoUpdate"] as? Bool ?? true; opacity = defaults["opacity"] as? Double ?? 1
         if randomSkin && !demo { skinID = library.themes.filter { $0.id != skinID }.randomElement()?.id ?? skinID }
         updates = MacUpdates(profile: profile); updates.changed = { [weak self] in self?.sendAll() }
@@ -60,8 +62,17 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button { button.title = "—%"; button.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold); tracker = StatusTracker(frame: button.bounds); tracker.autoresizingMask = [.width, .height]; tracker.owner = self; button.addSubview(tracker) }
         if defaults["startHidden"] as? Bool != true || demo { widget.orderFrontRegardless() }
-        rpc.notification = { [weak self] method, params in if method == "account/rateLimits/updated" { self?.usage = Usage.parse(params); self?.sendAll() }; if method == "account/login/completed" || method == "account/updated" { self?.refresh() } }
-        rpc.disconnected = { [weak self] in self?.status = "Нет соединения • ПКМ: обновить"; self?.sendAll() }
+        rpc.notification = { [weak self] method, params in
+            guard let self = self else { return }
+            if method == "account/rateLimits/updated" { self.usage = Usage.parse(params); self.sendAll() }
+            if method == "account/login/completed" {
+                self.loginBusy = false; self.authURL = nil; self.loginID = nil
+                if params["success"] as? Bool == true { self.refresh() }
+                else { self.status = "Не удалось войти в ChatGPT"; self.connectionError = params["error"] as? String ?? ""; self.sendAll() }
+            }
+            if method == "account/updated" { self.refresh() }
+        }
+        rpc.disconnected = { [weak self] error in self?.loginBusy = false; self?.authURL = nil; self?.status = "Не удалось подключиться к Codex"; self?.connectionError = error.localizedDescription; self?.sendAll() }
         timers.append(Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.refresh() })
         timers.append(Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in guard let self = self, self.renderDirectory == nil, self.hover.isVisible else { return }; let point = NSEvent.mouseLocation; let buttonFrame = self.statusItem.button.flatMap { $0.window?.convertToScreen($0.convert($0.bounds, to: nil)) } ?? .zero; if !self.hover.frame.insetBy(dx: -12, dy: -12).contains(point) && !buttonFrame.insetBy(dx: -12, dy: -16).contains(point) { self.hover.orderOut(nil) } })
         if demo { signedIn = true; account = "demo@example.com"; usage = Usage(windows: [Quota(minutes: 300, remaining: 72, reset: Date().timeIntervalSince1970+15540), Quota(minutes: 10080, remaining: 67, reset: Date().timeIntervalSince1970+273960)], plan: "prolite", resets: 2); status = ""; if renderDirectory != nil { timers.append(Timer.scheduledTimer(withTimeInterval: 120, repeats: false) { _ in fputs("Render timed out\n", stderr); exit(1) }) } } else { connect(); timers.append(Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in self?.checkUpdates() }); timers.append(Timer.scheduledTimer(withTimeInterval: 21600, repeats: true) { [weak self] _ in self?.checkUpdates() }) }
@@ -78,7 +89,7 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
     func send(_ web: WKWebView) {
         guard ready.contains(ObjectIdentifier(web)) else { return }
         let effective = previewSkin ?? skinID
-        let payload: [String: Any] = ["kind": web.identifier?.rawValue ?? "widget", "selectedSkin": skinID, "test": renderDirectory != nil, "skin": effective, "themes": library.themes.map(\.json), "strings": library.strings, "language": language, "usage": usage.json, "account": account, "signedIn": signedIn, "status": tr(status), "selectedMinutes": selectedMinutes, "width": Double(width), "autoUpdate": autoUpdate, "randomSkin": randomSkin, "pinned": pinned, "opacity": opacity, "startup": SMAppService.mainApp.status == .enabled, "updateStatus": tr(updates.status), "updateAvailable": updates.available != nil, "updateVersion": updates.available?["version"] as? String ?? "", "updateBusy": updates.busy, "version": appVersion]
+        let payload: [String: Any] = ["kind": web.identifier?.rawValue ?? "widget", "selectedSkin": skinID, "test": renderDirectory != nil, "skin": effective, "themes": library.themes.map(\.json), "strings": library.strings, "language": language, "usage": usage.json, "account": account, "signedIn": signedIn, "loginBusy": loginBusy, "hasLoginURL": authURL != nil, "cliPath": cliPath, "connectionError": connectionError, "status": tr(status), "selectedMinutes": selectedMinutes, "width": Double(width), "autoUpdate": autoUpdate, "randomSkin": randomSkin, "pinned": pinned, "opacity": opacity, "startup": SMAppService.mainApp.status == .enabled, "updateStatus": tr(updates.status), "updateAvailable": updates.available != nil, "updateVersion": updates.available?["version"] as? String ?? "", "updateBusy": updates.busy, "version": appVersion]
         web.evaluateJavaScript("window.receive(" + jsonString(payload) + ")", completionHandler: nil)
     }
     func sendAll() {
@@ -118,14 +129,79 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
     func trayDoubleClick() { hover.orderOut(nil); if widget.isVisible && width >= 799 { widget.orderOut(nil) } else { widget.orderFrontRegardless(); if width < 799 { compactFrame = nil; toggleSize() } } }
     func hoverHeight() -> CGFloat { let ornate = library.themes.first(where: { $0.id == (previewSkin ?? skinID) })?.values["kind"] as? String == "space"; return (usage.windows.count > 1 ? 620 : 450) + (ornate ? 50 : 0) }
     func showHover() { guard let button = statusItem.button, let window = button.window else { return }; send(hoverWeb); let rect = window.convertToScreen(button.convert(button.bounds, to: nil)); let screen = window.screen?.visibleFrame ?? NSScreen.main!.visibleFrame; let h = hoverHeight(); let frame = NSRect(x: min(max(rect.midX-280, screen.minX), screen.maxX-560), y: max(screen.minY, rect.minY-h-8), width: 560, height: h); hover.setFrame(frame, display: true); hover.orderFrontRegardless() }
-    func connect() {
-        guard !demo else { return }
-        guard let url = CodexRPC.find(preferred: defaults["cli"] as? String ?? "") else { status = "Codex не найден • ПКМ: Путь к Codex…"; sendAll(); return }
-        rpc.start(executable: url, home: profile.appendingPathComponent("account")) { [weak self] result in switch result { case .success: self?.refresh(); case .failure: self?.status = "Не удалось подключиться • ПКМ: обновить"; self?.sendAll() } }
+    func connect(completion: ((Bool) -> Void)? = nil) {
+        guard !demo else { completion?(true); return }
+        if rpc.isConnected { completion?(true); return }
+        if let completion = completion { connectionWaiters.append(completion) }
+        guard !connecting else { return }
+        guard let url = CodexRPC.find(preferred: defaults["cli"] as? String ?? "") else {
+            cliPath = ""; status = "Codex не найден. Установите Codex и нажмите «Найти Codex»."; connectionError = ""; finishConnection(false); return
+        }
+        cliPath = url.path; connecting = true; status = "Подключение…"; connectionError = ""; sendAll()
+        rpc.start(executable: url, home: profile.appendingPathComponent("account")) { [weak self] result in
+            guard let self = self else { return }; self.connecting = false
+            switch result {
+            case .success: self.status = ""; self.finishConnection(true); self.refresh()
+            case .failure(let error): self.status = "Не удалось подключиться к Codex"; self.connectionError = error.localizedDescription; self.finishConnection(false)
+            }
+        }
     }
-    func refresh() { guard !demo else { sendAll(); return }; rpc.call("account/read", ["refreshToken": false]) { [weak self] result in guard let self = self else { return }; if case .success(let data) = result, let account = data["account"] as? [String: Any], account["type"] as? String == "chatgpt" { self.signedIn = true; self.account = account["email"] as? String ?? ""; self.rpc.call("account/rateLimits/read") { [weak self] limits in if case .success(let data) = limits { self?.usage = Usage.parse(data); self?.status = "" } else { self?.status = "Данные устарели" }; self?.sendAll() } } else { self.signedIn = false; self.account = ""; self.status = "Требуется вход в ChatGPT"; self.sendAll() } } }
-    func login() { if signedIn { rpc.call("account/logout") { [weak self] _ in self?.usage = Usage(); self?.refresh() }; return }; if CodexRPC.find(preferred: defaults["cli"] as? String ?? "") == nil { chooseCLI(); return }; rpc.call("account/login/start", ["type": "chatgpt"]) { [weak self] result in if case .success(let data) = result, let address = data["authUrl"] as? String, let url = URL(string: address), url.scheme == "https", let host = url.host, host == "auth.openai.com" || host.hasSuffix(".openai.com") || host == "chatgpt.com" || host.hasSuffix(".chatgpt.com") { self?.loginID = data["loginId"] as? String; NSWorkspace.shared.open(url) } else if case .failure(let error) = result { self?.alert(error.localizedDescription) } } }
-    func chooseCLI() { let picker = NSOpenPanel(); picker.canChooseDirectories = false; picker.message = "Select the installed Codex CLI executable"; if picker.runModal() == .OK, let url = picker.url, FileManager.default.isExecutableFile(atPath: url.path) { defaults["cli"] = url.path; save(); connect() } }
+    func finishConnection(_ success: Bool) { let callbacks = connectionWaiters; connectionWaiters.removeAll(); sendAll(); callbacks.forEach { $0(success) } }
+    func refresh() {
+        guard !demo else { sendAll(); return }
+        guard rpc.isConnected else { connect(); return }
+        rpc.call("account/read", ["refreshToken": false]) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let data):
+                if let account = data["account"] as? [String: Any], account["type"] as? String == "chatgpt" {
+                    self.signedIn = true; self.account = account["email"] as? String ?? ""
+                    self.rpc.call("account/rateLimits/read") { [weak self] limits in
+                        guard let self = self else { return }
+                        switch limits { case .success(let data): self.usage = Usage.parse(data); self.status = ""; self.connectionError = ""
+                        case .failure(let error): self.status = "Данные устарели"; self.connectionError = error.localizedDescription }
+                        self.sendAll()
+                    }
+                } else { self.signedIn = false; self.account = ""; if !self.loginBusy { self.status = "Требуется вход в ChatGPT" }; self.sendAll() }
+            case .failure(let error): self.status = "Не удалось подключиться к Codex"; self.connectionError = error.localizedDescription; self.sendAll()
+            }
+        }
+    }
+    func login() {
+        guard !loginBusy else { if let url = authURL { openLoginURL(url) }; return }
+        loginBusy = true; connectionError = ""; sendAll()
+        connect { [weak self] connected in
+            guard let self = self else { return }
+            guard connected else { self.loginBusy = false; self.sendAll(); return }
+            if self.signedIn {
+                self.rpc.call("account/logout") { result in
+                    self.loginBusy = false
+                    if case .failure(let error) = result { self.connectionError = error.localizedDescription; self.sendAll() }
+                    else { self.usage = Usage(); self.refresh() }
+                }; return
+            }
+            self.status = "Открытие браузера…"; self.sendAll()
+            self.rpc.call("account/login/start", ["type": "chatgpt"]) { result in
+                switch result {
+                case .success(let data):
+                    guard let address = data["authUrl"] as? String, let url = URL(string: address), url.scheme == "https", let host = url.host?.lowercased(), host == "auth.openai.com" || host.hasSuffix(".openai.com") || host == "chatgpt.com" || host.hasSuffix(".chatgpt.com") else {
+                        self.loginBusy = false; self.status = "Не удалось войти в ChatGPT"; self.connectionError = self.tr("Codex не вернул ссылку входа. Обновите Codex и повторите попытку."); self.sendAll(); return
+                    }
+                    self.loginID = data["loginId"] as? String; self.authURL = url; self.openLoginURL(url)
+                case .failure(let error): self.loginBusy = false; self.status = "Не удалось войти в ChatGPT"; self.connectionError = error.localizedDescription; self.sendAll()
+                }
+            }
+        }
+    }
+    func openLoginURL(_ url: URL) { status = NSWorkspace.shared.open(url) ? "Завершите вход в браузере" : "Не удалось открыть браузер. Скопируйте ссылку входа."; sendAll() }
+    func chooseCLI() {
+        let picker = NSOpenPanel(); picker.canChooseDirectories = false; picker.treatsFilePackagesAsDirectories = false
+        picker.message = tr("Выберите Codex.app или исполняемый файл codex."); picker.prompt = tr("Выбрать")
+        if picker.runModal() == .OK, let url = picker.url {
+            guard let executable = CodexRPC.executable(in: url) else { alert(tr("Выберите Codex.app или исполняемый файл codex.")); return }
+            defaults["cli"] = executable.path; rpc.stop(); save(); connect()
+        }
+    }
     func showSettings() { hover.orderOut(nil); if settings == nil { let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 740), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false); w.title = "CodexMeter · " + tr("Настройки"); w.isReleasedWhenClosed = false; w.delegate = self; settingsWeb = makeWeb(kind: "settings"); w.contentView = settingsWeb; w.center(); settings = w }; settings?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); if let web = settingsWeb { send(web) } }
     func windowWillClose(_ notification: Notification) { if let w = notification.object as? NSWindow, w === settings { previewSkin = nil; sendAll() } }
     func applicationWillTerminate(_ notification: Notification) { save(); timers.forEach { $0.invalidate() }; rpc.stop() }
@@ -162,6 +238,9 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         case "refresh": refresh()
         case "login": login()
         case "cli": chooseCLI()
+        case "detectCLI": defaults.removeValue(forKey: "cli"); rpc.stop(); connect()
+        case "openLogin": if let url = authURL { openLoginURL(url) }
+        case "copyLogin": if let url = authURL { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(url.absoluteString, forType: .string) }
         case "guide": if let text = try? String(contentsOf: root.appendingPathComponent("SkinGuide.md"), encoding: .utf8) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string) }
         case "folder": NSWorkspace.shared.open(profile.appendingPathComponent("UserSkins"))
         case "reload": do { try library.reload() } catch { alert(error.localizedDescription) }

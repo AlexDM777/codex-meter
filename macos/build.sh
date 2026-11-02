@@ -27,6 +27,6 @@ codesign --verify --deep --strict "$APP"
 mkdir -p "$BUILD/dmg"
 ditto "$APP" "$BUILD/dmg/CodexMeter.app"
 if [ ! -L "$BUILD/dmg/Applications" ]; then ln -s /Applications "$BUILD/dmg/Applications"; fi
-hdiutil create -volname CodexMeter -srcfolder "$BUILD/dmg" -ov -format UDZO "$ROOT/dist/CodexMeter-4.0-macOS-universal.dmg" >/dev/null
-(cd "$ROOT/dist" && shasum -a 256 CodexMeter-macOS-universal.zip CodexMeter-4.0-macOS-universal.dmg > SHA256SUMS-macOS.txt)
+hdiutil create -volname CodexMeter -srcfolder "$BUILD/dmg" -ov -format UDZO "$ROOT/dist/CodexMeter-4.0.1-macOS-universal.dmg" >/dev/null
+(cd "$ROOT/dist" && shasum -a 256 CodexMeter-macOS-universal.zip CodexMeter-4.0.1-macOS-universal.dmg > SHA256SUMS-macOS.txt)
 echo "Built universal macOS app (Apple Silicon + Intel)"
