@@ -10,13 +10,13 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: macos-26
+    runs-on: macos-15-intel
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Compile universal app and create DMG
         run: bash macos/build.sh
-      - name: Test Apple Silicon and all skin resources
+      - name: Test native app and all skin resources
         run: build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
       - name: Install official Codex CLI for authentication regression test
         run: npm install --prefix "$RUNNER_TEMP/codex-runtime" @openai/codex
@@ -32,16 +32,16 @@ jobs:
             dist/CodexMeter-macOS-universal.zip
             dist/CodexMeter-4.0.1-macOS-universal.dmg
             dist/SHA256SUMS-macOS.txt
-  intel:
+  apple-silicon:
     needs: build
-    runs-on: macos-15-intel
+    runs-on: macos-26
     timeout-minutes: 10
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: macOS-packages
           path: dist
-      - name: Verify Intel execution
+      - name: Verify Apple Silicon execution
         run: |
           ditto -x -k dist/CodexMeter-macOS-universal.zip unpacked
           codesign --verify --deep --strict unpacked/CodexMeter.app
@@ -50,7 +50,7 @@ jobs:
           unpacked/CodexMeter.app/Contents/MacOS/CodexMeter --rpc-test "$RUNNER_TEMP/codex-runtime/node_modules/.bin/codex"
   publish:
     if: inputs.publish
-    needs: [build, intel]
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -63,4 +63,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload v4.0.1 dist/* --repo "$GITHUB_REPOSITORY"
+          TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --json tagName,name,isDraft --jq '.[] | select(.isDraft and .name == "CodexMeter 4.0.1 — System language & Mac sign-in") | .tagName')"
+          test -n "$TAG"
+          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
