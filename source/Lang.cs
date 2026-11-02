@@ -4,9 +4,10 @@ using System.Linq;
 using System.Windows.Controls;
 namespace CodexMeter {
 public static class Lang {
-    static string code="ru";
+    static string code=SystemLanguage(System.Globalization.CultureInfo.CurrentUICulture.Name);
+    public static string SystemLanguage(string name){string first=(name??"").Replace('_','-').Split('-')[0].ToLowerInvariant();return new[]{"ru","en","de","it","es","sr","fr","pt"}.Contains(first)?first:"en";}
     public static readonly Dictionary<string,string> Names=new Dictionary<string,string>{{"ru","Русский"},{"en","English"},{"de","Deutsch"},{"it","Italiano"},{"es","Español"},{"sr","Srpski"},{"fr","Français"},{"pt","Português"}};
-    public static string Code {get{return code;}set{code=Names.ContainsKey(value??"")?value:"ru";}}
+    public static string Code {get{return code;}set{code=Names.ContainsKey(value??"")?value:SystemLanguage(System.Globalization.CultureInfo.CurrentUICulture.Name);}}
     static readonly string[] Codes={"ru","en","de","it","es","sr","fr","pt"};
     static readonly Dictionary<string,string[]> Strings=new Dictionary<string,string[]>{
 {"Проверить обновления программы",new[]{"Проверить обновления программы","Check for app updates","Nach Programmupdates suchen","Verifica aggiornamenti app","Buscar actualizaciones de la app","Proveri ažuriranja programa","Rechercher des mises à jour","Verificar atualizações do aplicativo"}},
