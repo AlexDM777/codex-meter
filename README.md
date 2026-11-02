@@ -1,139 +1,147 @@
-﻿<div align="center">
+<div align="center">
 
 # CodexMeter
 
-**Лимиты Codex — на рабочем столе и в трее / строке меню.**  
-Проценты, время до сброса и доступные сбросы. Одним взглядом.
+**Your Codex limits, on your desktop and in your menu bar.**  
+Remaining usage, time until reset, and available resets. At a glance.
 
-[**↓ Скачать для Windows**](https://github.com/AlexDM777/codex-meter/releases/latest) &nbsp; · &nbsp; [**↓ Скачать для Mac**](https://github.com/AlexDM777/codex-meter/releases/download/v4.0.0/CodexMeter-4.0-macOS-universal.dmg) &nbsp; · &nbsp; [Все скины](#свой-характер) &nbsp; · &nbsp; [Как установить](#три-шага-до-первого-запуска)
+[**↓ Download for Windows**](https://github.com/AlexDM777/codex-meter/releases/latest) &nbsp; · &nbsp; [**↓ Download for Mac**](https://github.com/AlexDM777/codex-meter/releases/latest/download/CodexMeter-macOS-universal.zip) &nbsp; · &nbsp; [Explore skins](#make-it-yours) &nbsp; · &nbsp; [Get started](#get-started)
 
-Windows 10/11 · macOS 13+ · 16 скинов · 8 языков
+Windows 10/11 · macOS 13+ · 16 skins · 8 languages
 
 </div>
 
-![CodexMeter: недельный лимит на рабочем столе и часовые и недельные лимиты в карточке трея](media/overview.webp)
+![CodexMeter desktop widget and detailed tray quota card](media/overview.webp)
 
-| Главное — сразу | Ваше оформление | Обновляется само |
+| What matters first | Your own look | Updates itself |
 | :--- | :--- | :--- |
-| Остаток и отсчёт до сброса крупно. Подробности — при наведении на трей. | 16 скинов, живая примерка и собственные темы. От стекла до игровых миров. | Новые версии через GitHub. Настройки, вход и пользовательские скины сохраняются. |
+| Large remaining percentages and reset countdowns. Hover over the tray icon for details. | 16 skins, live previews, and custom themes. From glass to game-inspired worlds. | Updates through GitHub. Settings, sign-in and custom skins are preserved. |
 
-## Столько места, сколько нужно
+## As small as you need
 
-Небольшой индикатор для работы, полный экран параметров — по двойному щелчку. Размер можно менять колесом мыши от 100 до 1000 пикселей.
+Keep a compact indicator on your desktop. Double-click to expand it and inspect the details. Scroll to resize from 100 to 1000 pixels.
 
-![Размеры CodexMeter: 100 — только число, 200 — число и шкала, 500 — все параметры](media/sizes.webp)
+![CodexMeter sizes: 100 for the number, 200 for the number and progress bar, 500 for details](media/sizes.webp)
 
-## Цифры меняются мягко
+## Numbers that move smoothly
 
-Плавная смена процентов и короткий перекат цифр отсчёта. Анимация работает только в момент изменения и учитывает системные настройки движения.
+Percentages change with a subtle transition. Countdown digits roll as the remaining time changes. Animations respect your system motion preferences.
 
 <p align="center">
-  <img src="media/motion.gif" width="320" alt="Настоящая анимация CodexMeter: проценты плавно меняются с 67 на 66 и 65, минуты перекатываются сверху вниз">
+  <img src="media/motion.gif" width="320" alt="CodexMeter percentages transition from 67 to 66 and 65 while countdown digits roll">
 </p>
 
-## Свой характер
+## Make it yours
 
-Спокойный дневной или ночной интерфейс, классический ЖК, аналоговый индикатор и темы по мотивам любимых игр и фильмов. В приложении наведите курсор на скин для примерки, щёлкните для сохранения. Можно включить новый скин при каждом запуске или [загрузить собственный](SkinGuide.md).
+Choose day or night glass, a classic LCD, an analog display, or a skin inspired by a favorite game or movie. Hover over a thumbnail to preview it; click to keep it. Use a new skin on every launch, or [create your own](SkinGuide.md).
 
-![Все 16 скинов CodexMeter с номерами и названиями: ЖК, стекло, Бескар, Герои III, Fallout, Counter-Strike, DOOM II, Diablo, StarCraft, Терминатор 2 и Vice City](media/skins.webp)
+![All 16 numbered CodexMeter skins, including glass, LCD and game-inspired themes](media/skins.webp)
 
-<sub>На всех изображениях — реальный интерфейс версии 4.0 с демонстрационными значениями. Смена минут в ролике ускорена для показа эффекта.</sub>
+<sub>The showcase images show the Windows interface with demonstration values. Countdown changes in the animation are accelerated. The Mac app uses the same skin library with its own native shell.</sub>
 
-## Не нашли свой скин? Создайте его с Codex
+## Create a custom skin with Codex
 
-**Можно добавить собственную тему — менять код приложения не нужно.** Опишите своему Codex желаемый стиль: например, «тёмное дерево и латунь», «космический терминал» или «спокойный светлый интерфейс». Готовая MD-инструкция объяснит ему формат скина и расположение элементов.
+**Add your own theme without changing application code.** Describe the look you want: dark wood and brass, a spaceship console, or a quiet light interface. The MD guide explains the skin format and the areas reserved for live data.
 
-### 1. Возьмите MD-инструкцию
+### 1. Get the guide
 
-[**Открыть SkinGuide.md для своего Codex →**](SkinGuide.md) · [Скачать MD-файл](https://raw.githubusercontent.com/AlexDM777/codex-meter/main/SkinGuide.md)
+[**Open SkinGuide.md →**](SkinGuide.md) · [Download the MD file](https://raw.githubusercontent.com/AlexDM777/codex-meter/main/SkinGuide.md)
 
-Её также можно скопировать прямо из приложения: **ПКМ → Настройки → Пользовательские скины → Скопировать MD-инструкцию**.
+You can also copy it from the app: **Settings → Custom skins → Copy MD instructions**.
 
-### 2. Создайте тему
+### 2. Ask Codex to create a theme
 
-Прикрепите `SkinGuide.md` к чату со своим Codex или вставьте скопированный текст и добавьте пожелания. Например:
+Attach `SkinGuide.md` to your Codex chat, or paste its contents, then describe your preferred style. For example:
 
-> Создай скин для CodexMeter по приложенной MD-инструкции. Хочу тёмный деревянный корпус, тонкую латунную рамку и тёплые светлые цифры. Подготовь готовые файлы `skin.json` и `background.webp` в одной папке.
+> Create a CodexMeter skin following the attached MD guide. Use dark wood, a thin brass frame, and warm light digits. Provide skin.json and background.webp together in one folder.
 
-Фон — только оформление. Цифры, время и прогресс-бары приложение добавляет само, поэтому они продолжают показывать актуальные данные.
+The background is decoration only. CodexMeter draws the numbers, countdowns and progress bars so they continue to show live data.
 
-### 3. Загрузите скин в приложение
+### 3. Import the skin
 
-Оставьте `skin.json` и `background.webp` рядом в одной папке. Откройте **ПКМ → Настройки → Пользовательские скины → Загрузить скин…** и выберите **`skin.json`**.
+Keep `skin.json` and `background.webp` in the same folder. Open **Settings → Custom skins → Import skin** and select **skin.json**.
 
-Тема появится в общей галерее с собственным номером. Она применяется к виджету, маленькому индикатору и карточке трея; выбранная палитра используется и на значке трея. Пользовательские темы сохраняются при обновлениях приложения и участвуют в случайном выборе скина при запуске.
+Your theme appears in the gallery with its own number. It applies to the desktop widget, compact indicator and hover card; its palette also styles the tray indicator. Custom themes are preserved during updates and included in random skin selection.
 
 <details>
-<summary>Установка вручную и совместимость</summary>
+<summary>Manual installation and compatibility</summary>
 
-В меню **Пользовательские скины → Открыть папку скинов** можно открыть библиотеку и положить отдельную папку темы туда самостоятельно. Затем нажмите **Обновить список**. Путь библиотеки: `%LOCALAPPDATA%\CodexMeter\UserSkins`.
+Use **Custom skins → Open skins folder** to open the library, put your theme in a separate folder, then click **Reload skins**.
 
-Прежние пакеты с `background.png` тоже поддерживаются; при импорте приложение сохраняет фон в WebP. Полная схема JSON и требования к изображению находятся в [SkinGuide.md](SkinGuide.md).
+- Windows: `%LOCALAPPDATA%\CodexMeter\UserSkins`
+- Mac: `~/Library/Application Support/CodexMeter/UserSkins`
+
+Existing packages using `background.png` are also accepted. See [SkinGuide.md](SkinGuide.md) for the JSON schema and image requirements.
 
 </details>
 
-## Три шага до первого запуска
+## Get started
 
-1. Установите официальный **Codex** и хотя бы один раз запустите его.
-2. [Скачайте CodexMeter](https://github.com/AlexDM777/codex-meter/releases/latest): для Windows — **Setup.exe** или **Portable.zip**; для Mac — **macOS-universal.dmg** или **macOS-universal.zip**.
-3. В настройках виджета выберите **«Войти в ChatGPT…»**.
+1. Install the official **Codex** app or CLI and launch it at least once.
+2. [Download CodexMeter](https://github.com/AlexDM777/codex-meter/releases/latest). On Windows, choose **Setup.exe** or **Portable.zip**. On Mac, choose **macOS-universal.dmg** or **macOS-universal.zip**.
+3. Open widget settings and select **Sign in to ChatGPT**. Complete sign-in in your browser.
 
-Вход виджета хранится отдельно от основного Codex. Данные аккаунта не включаются в дистрибутив. Windows-версии нужны Windows 10/11 x64 и .NET Framework 4.8. Mac-версии — macOS 13 или новее; один Universal-пакет поддерживает Apple Silicon и Intel. Встроенная копия Codex не поставляется.
+The widget uses a separate account profile. No account credentials are included in downloads. Windows requires Windows 10/11 x64 and .NET Framework 4.8. The Universal Mac app supports macOS 13+ on Apple Silicon and Intel. Codex itself is not bundled.
 
-## Версия для Mac
+On first launch, CodexMeter uses your system language when supported, otherwise English. You can change it in settings; your choice is remembered. Supported languages: English, Russian, German, Italian, Spanish, Serbian, French and Portuguese.
 
-[**Скачать DMG для macOS →**](https://github.com/AlexDM777/codex-meter/releases/download/v4.0.0/CodexMeter-4.0-macOS-universal.dmg) · [ZIP с приложением](https://github.com/AlexDM777/codex-meter/releases/download/v4.0.0/CodexMeter-macOS-universal.zip) · [Полная инструкция](macos/MACOS.md)
+## On a Mac
 
-Откройте DMG и перенесите **CodexMeter.app** в **Applications («Программы»)**. После запуска проценты появятся в строке меню macOS. Наведение открывает карточку лимитов, ПКМ — меню, а в настройках можно войти в ChatGPT и выбрать скин. Если Codex не обнаружен, укажите его через «Путь к Codex…».
+[**Download the Universal ZIP →**](https://github.com/AlexDM777/codex-meter/releases/latest/download/CodexMeter-macOS-universal.zip) · [DMG and other downloads](https://github.com/AlexDM777/codex-meter/releases/latest) · [Mac installation guide](macos/MACOS.md)
 
-Mac-приложение использует AppKit и системный WebKit — встроенного браузера и отдельной копии Codex в пакете нет. Сохранены 16 скинов, маленькие индикаторы, собственные темы, языки, снимок виджета и обновления. Настройки и пользовательские темы хранятся в `~/Library/Application Support/CodexMeter`.
+Open the DMG and drag **CodexMeter.app** into **Applications**, or extract the ZIP there. Remaining usage appears in the macOS menu bar. Hover for the quota card and right-click for the menu.
 
-**Это первый Mac-выпуск:** обе архитектуры собраны и проверены на macOS-серверах GitHub, все 16 скинов отрисованы в WebKit. Авторизацию и живые лимиты на личном Mac пока не проверяли. Сборка имеет ad-hoc-подпись для целостности, но **не имеет Developer ID и нотариализации Apple**; macOS может ограничить первый запуск загруженного приложения. Не отключайте Gatekeeper. Ограничение подписи и самостоятельная сборка описаны в [инструкции для Mac](macos/MACOS.md).
+CodexMeter automatically detects Codex.app and common CLI installations. If needed, expand **Codex connection** in settings and click **Find Codex**. A custom location can be selected using **Choose Codex.app**; you can select the app itself or its CLI executable. Sign-in errors are displayed in settings, with an option to reopen the browser or copy the sign-in link while authorization is pending.
 
-<sub>Скриншоты в витрине выше показывают Windows-версию. macOS-версия использует ту же библиотеку скинов с отдельной оболочкой.</sub>
+The Mac app uses AppKit and the system WebKit. Settings and custom themes are stored in `~/Library/Application Support/CodexMeter`.
 
-## Удобно каждый день
+The app has an ad-hoc integrity signature, without Apple Developer ID or notarization. macOS may restrict its first launch. See the [Mac guide](macos/MACOS.md) for signature details and build instructions. Native tests run on Apple Silicon and Intel. A personal account is still required to verify completed sign-in and live limits.
 
-- **ПКМ** — скины, размер, прозрачность, снимок в буфер, поверх окон и настройки.
-- **Колесо мыши** — изменить размер. **Двойной щелчок** — раскрыть виджет и вернуть прежний размер.
-- **Трей** — остаток прямо на значке и подробная карточка при наведении.
-- **Русский, English, Deutsch, Italiano, Español, Srpski, Français, Português.**
-- **Автозапуск**, случайные скины, выбор лимита для маленького индикатора.
+## Everyday controls
+
+- **Right-click:** skins, size, opacity, screenshot, always on top and settings.
+- **Scroll:** resize. **Double-click:** expand and restore the widget.
+- **Tray / menu bar:** remaining usage on the indicator and details on hover.
+- **Settings:** language, startup, random skins and the limit shown in compact mode.
 
 <details>
-<summary><strong>Как работают обновления</strong></summary>
+<summary><strong>How updates work</strong></summary>
 
-Приложение проверяет стабильные релизы этого репозитория через 15 секунд после запуска и затем каждые шесть часов. При наличии новой версии в карточке трея появляется уведомление и кнопка обновления. В настройках отдельно доступны обновление программы и обновление показателей.
+CodexMeter checks stable releases in this repository shortly after startup and every six hours. A new release adds an update notice and button to the hover card. Settings distinguish app updates from refreshing usage data.
 
-Автообновление включено по умолчанию и отключается галочкой. Проверка SHA-256, резервная копия и откат защищают установку; после замены файлов программа запускается снова. Настройки, вход и пользовательские скины сохраняются. Если папка требует прав администратора, Windows покажет обычный запрос.
+Automatic updates are enabled by default and can be disabled. Downloads are checked with SHA-256; installation uses a backup and rollback before restarting. Settings, sign-in and custom skins are preserved. Windows may request administrator permission if the installation folder requires it.
 
-Запросы обновлений идут только к GitHub Releases; личные данные Codex и токены не отправляются. Для выпуска новой версии есть [RELEASING.md](RELEASING.md).
+Update requests go to GitHub Releases; Codex account credentials are not sent to GitHub. See [RELEASING.md](RELEASING.md) for release instructions.
 
 </details>
 
 <details>
-<summary><strong>Для разработчиков: сборка и проверки</strong></summary>
+<summary><strong>Build and test</strong></summary>
 
-## Сборка
+On Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\source\build.ps1
 powershell -ExecutionPolicy Bypass -File .\release.ps1
-```
-
-Используется компилятор .NET Framework из Windows. Первая команда создаёт приложение и помощник обновления, вторая — ZIP, установщик, пакет обновления и SHA256SUMS в `dist`.
-
-```powershell
 .\CodexMeter.exe --self-test
 .\CodexMeter.exe --custom-test
 .\CodexMeter.exe --update-test
-.\CodexMeter.exe --ui-test .\test-screen.png --data-dir .\test-profile
 ```
 
-Последняя проверка запускает изолированный тестовый профиль; для подключения CLI нужен установленный Codex. Боевые настройки не используются.
+The build uses the .NET Framework compiler included with Windows. Packaging produces the portable ZIP, installer, update package and checksums in `dist`.
+
+On a Mac:
+
+```sh
+bash macos/build.sh
+build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
+build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --rpc-test /absolute/path/to/codex
+```
+
+The RPC test uses a temporary account profile to verify initialization, browser sign-in URL creation, cancellation and reconnect with the real Codex CLI. It does not use personal credentials. See [macos/MACOS.md](macos/MACOS.md) for requirements.
 
 </details>
 
-## Ресурсы
+## Credits
 
-Стили вдохновлены знакомыми игровыми и кинематографическими интерфейсами; приложение не связано с их правообладателями. Сторонние библиотеки и их условия перечислены в [ThirdParty.txt](ThirdParty.txt). Код публичен; отдельная лицензия проекта пока не выбрана.
+Skins are inspired by familiar game and movie interfaces; CodexMeter is not affiliated with their rights holders. Third-party libraries and notices are listed in [ThirdParty.txt](ThirdParty.txt). The source is public; a separate project license has not yet been selected.

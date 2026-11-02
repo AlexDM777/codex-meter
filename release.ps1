@@ -1,4 +1,4 @@
-param([string]$Version='4.0.0')
+﻿param([string]$Version='4.0.1')
 $ErrorActionPreference='Stop'
 $root=$PSScriptRoot
 $declared=[regex]::Match((Get-Content (Join-Path $root 'source/AppUpdate.cs') -Raw),'CurrentVersion="([^"]+)"').Groups[1].Value
@@ -20,6 +20,6 @@ $hashes=[ordered]@{}
 Get-ChildItem $stage -Recurse -File|Sort-Object FullName|ForEach-Object{$relative=$_.FullName.Substring($stage.Length+1).Replace('\','/');$hashes[$relative]=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
 @{version=$Version;files=$hashes}|ConvertTo-Json -Depth 4|Set-Content (Join-Path $stage 'update-manifest.json') -Encoding UTF8
 Compress-Archive -Path (Get-ChildItem $stage|ForEach-Object{$_.FullName}) -DestinationPath (Join-Path $dist 'CodexMeter-update-win-x64.zip') -Force
-$lines=Get-ChildItem $dist -File|Where-Object{$_.Extension -in '.zip','.exe'}|Sort-Object Name|ForEach-Object{(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$_.Name}
+$lines=Get-ChildItem $dist -File|Where-Object{ $_.Name -in @(('CodexMeter-'+$label+'-Lite-Portable.zip'),('CodexMeter-'+$label+'-Lite-Setup.exe'),'CodexMeter-update-win-x64.zip') }|Sort-Object Name|ForEach-Object{(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$_.Name}
 [IO.File]::WriteAllLines((Join-Path $dist 'SHA256SUMS.txt'),$lines,[Text.UTF8Encoding]::new($false))
 Write-Output "Release $Version built in $dist"
