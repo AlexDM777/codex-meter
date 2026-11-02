@@ -112,7 +112,12 @@ final class CodexRPC {
         paths += (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map { String($0)+"/codex" }
         for base in [home+"/.nvm/versions/node", home+"/Library/Application Support/OpenAI/Codex/bin"] {
             if let dirs = try? FileManager.default.contentsOfDirectory(atPath: base) {
-                paths += dirs.sorted { $0.compare($1, options: .numeric) == .orderedDescending }.flatMap { [base+"/"+$0+"/bin/codex", base+"/"+$0+"/codex"] }
+                let ordered = dirs.sorted { left, right in left.compare(right, options: .numeric) == .orderedDescending }
+                for directory in ordered {
+                    let folder = URL(fileURLWithPath: base).appendingPathComponent(directory)
+                    paths.append(folder.appendingPathComponent("bin/codex").path)
+                    paths.append(folder.appendingPathComponent("codex").path)
+                }
             }
         }
         return paths.filter { $0.hasPrefix("/") }.compactMap { executable(in: URL(fileURLWithPath: $0)) }.first
