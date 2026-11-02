@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +46,8 @@ jobs:
           ditto -x -k dist/CodexMeter-macOS-universal.zip unpacked
           codesign --verify --deep --strict unpacked/CodexMeter.app
           unpacked/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
+          npm install --prefix "$RUNNER_TEMP/codex-runtime" @openai/codex
+          unpacked/CodexMeter.app/Contents/MacOS/CodexMeter --rpc-test "$RUNNER_TEMP/codex-runtime/node_modules/.bin/codex"
   publish:
     if: inputs.publish
     needs: [build, intel]
