@@ -1,11 +1,14 @@
 name: Build macOS
 on:
+  push:
+    branches: [main]
+    paths: [macos/**, skins/**, .github/workflows/macos.yml]
   workflow_dispatch:
     inputs:
       publish:
-        description: Attach verified macOS builds to release v4.0.1
+        description: Attach verified macOS builds to release v4.0.2
         type: boolean
-        default: true
+        default: false
 permissions:
   contents: read
 jobs:
@@ -18,6 +21,15 @@ jobs:
         run: bash macos/build.sh
       - name: Test native app and all skin resources
         run: build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
+      - name: Render all skins with test limits
+        run: |
+          for scenario in hours week pair compact; do
+            CODEXMETER_RENDER_SCENARIO="$scenario" build/macos/CodexMeter.app/Contents/MacOS/CodexMeter --render-test "build/previews/$scenario"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macOS-skin-previews
+          path: build/previews
       - name: Install official Codex CLI for authentication regression test
         run: npm install --prefix "$RUNNER_TEMP/codex-runtime" @openai/codex
       - name: Verify real Codex browser sign-in and reconnect
@@ -30,11 +42,11 @@ jobs:
           name: macOS-packages
           path: |
             dist/CodexMeter-macOS-universal.zip
-            dist/CodexMeter-4.0.1-macOS-universal.dmg
+            dist/CodexMeter-4.0.2-macOS-universal.dmg
             dist/SHA256SUMS-macOS.txt
   apple-silicon:
     needs: build
-    runs-on: macos-26
+    runs-on: macos-15
     timeout-minutes: 10
     steps:
       - uses: actions/download-artifact@v4
@@ -46,11 +58,16 @@ jobs:
           ditto -x -k dist/CodexMeter-macOS-universal.zip unpacked
           codesign --verify --deep --strict unpacked/CodexMeter.app
           unpacked/CodexMeter.app/Contents/MacOS/CodexMeter --self-test
+          mount="$RUNNER_TEMP/codexmeter-dmg"
+          hdiutil attach dist/CodexMeter-4.0.2-macOS-universal.dmg -readonly -nobrowse -mountpoint "$mount"
+          trap 'hdiutil detach "$mount"' EXIT
+          codesign --verify --deep --strict "$mount/CodexMeter.app"
+          "$mount/CodexMeter.app/Contents/MacOS/CodexMeter" --self-test
           npm install --prefix "$RUNNER_TEMP/codex-runtime" @openai/codex
           unpacked/CodexMeter.app/Contents/MacOS/CodexMeter --rpc-test "$RUNNER_TEMP/codex-runtime/node_modules/.bin/codex"
   publish:
     if: inputs.publish
-    needs: build
+    needs: [build, apple-silicon]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -63,6 +80,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --json tagName,name,isDraft --jq '.[] | select(.isDraft and .name == "CodexMeter 4.0.1 — System language & Mac sign-in") | .tagName')"
-          test -n "$TAG"
-          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+          gh release upload v4.0.2 dist/* --repo "$GITHUB_REPOSITORY"
