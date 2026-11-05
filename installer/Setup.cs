@@ -17,10 +17,10 @@ class Setup : Form {
     CheckBox desktop=new CheckBox{Text="Создать ярлык на рабочем столе",Checked=true},startup=new CheckBox{Text="Запускать вместе с Windows",Checked=true},launch=new CheckBox{Text="Запустить после установки",Checked=true};
     Button install=new Button{Text="Установить"};
     public Setup() {
-        Text="Установка CodexMeter 4.0.1 Lite";ClientSize=new Size(600,420);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;
+        Text="Установка CodexMeter 4.0.2 Lite";ClientSize=new Size(600,420);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;
         Icon=Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
         Font=new Font("Segoe UI",10);
-        Controls.Add(new Label{Text="CodexMeter 4.0.1 Lite",Font=new Font("Segoe UI",19,FontStyle.Bold),Location=new Point(24,20),Size=new Size(540,42)});
+        Controls.Add(new Label{Text="CodexMeter 4.0.2 Lite",Font=new Font("Segoe UI",19,FontStyle.Bold),Location=new Point(24,20),Size=new Size(540,42)});
         Controls.Add(new Label{Text="Все скины и размеры • иконка 67 • установленный Codex",Location=new Point(24,66),Size=new Size(550,25)});
         Controls.Add(new Label{Text="Папка установки (для текущего пользователя)",Location=new Point(24,104),Size=new Size(540,25)});
         folder.SetBounds(24,133,448,28);folder.Text=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","CodexMeter");Controls.Add(folder);
@@ -80,7 +80,7 @@ class Setup : Form {
             Shortcut(Path.Combine(menu,"CodexMeter.lnk"),exe);Shortcut(Path.Combine(menu,"Удалить CodexMeter.lnk"),Path.Combine(target,"Uninstall.exe"),"--uninstall");
             string desk=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"CodexMeter.lnk");if(desktop.Checked)Shortcut(desk,exe);else if(File.Exists(desk))File.Delete(desk);
             using(var key=Registry.CurrentUser.CreateSubKey(UninstallKey)){
-                key.SetValue("DisplayName","CodexMeter Lite");key.SetValue("DisplayVersion","4.0.1");key.SetValue("Publisher","CodexMeter");key.SetValue("InstallLocation",target);
+                key.SetValue("DisplayName","CodexMeter Lite");key.SetValue("DisplayVersion","4.0.2");key.SetValue("Publisher","CodexMeter");key.SetValue("InstallLocation",target);
                 key.SetValue("DisplayIcon",exe+",0");key.SetValue("UninstallString","\""+Path.Combine(target,"Uninstall.exe")+"\" --uninstall");key.SetValue("NoModify",1);key.SetValue("NoRepair",1);
             }
             foreach(string name in Files())File.Delete(Path.Combine(stage,name));
