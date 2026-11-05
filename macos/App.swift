@@ -25,6 +25,7 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
     var updates: MacUpdates!
     var defaults: [String: Any] = [:]
     var usage = Usage()
+    var accountPlan = ""
     var signedIn = false, account = "", status = "Подключение…", loginID: String?
     var connecting = false, loginBusy = false, authURL: URL?, connectionError = "", cliPath = ""
     var connectionWaiters: [(Bool) -> Void] = []
@@ -64,7 +65,7 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         if defaults["startHidden"] as? Bool != true || demo { widget.orderFrontRegardless() }
         rpc.notification = { [weak self] method, params in
             guard let self = self else { return }
-            if method == "account/rateLimits/updated" { self.usage = Usage.parse(params); self.sendAll() }
+            if method == "account/rateLimits/updated" && self.signedIn { self.refresh() }
             if method == "account/login/completed" {
                 self.loginBusy = false; self.authURL = nil; self.loginID = nil
                 if params["success"] as? Bool == true { self.refresh() }
@@ -75,7 +76,15 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         rpc.disconnected = { [weak self] error in self?.loginBusy = false; self?.authURL = nil; self?.status = "Не удалось подключиться к Codex"; self?.connectionError = error.localizedDescription; self?.sendAll() }
         timers.append(Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.refresh() })
         timers.append(Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in guard let self = self, self.renderDirectory == nil, self.hover.isVisible else { return }; let point = NSEvent.mouseLocation; let buttonFrame = self.statusItem.button.flatMap { $0.window?.convertToScreen($0.convert($0.bounds, to: nil)) } ?? .zero; if !self.hover.frame.insetBy(dx: -12, dy: -12).contains(point) && !buttonFrame.insetBy(dx: -12, dy: -16).contains(point) { self.hover.orderOut(nil) } })
-        if demo { signedIn = true; account = "demo@example.com"; usage = Usage(windows: [Quota(minutes: 300, remaining: 72, reset: Date().timeIntervalSince1970+15540), Quota(minutes: 10080, remaining: 67, reset: Date().timeIntervalSince1970+273960)], plan: "prolite", resets: 2); status = ""; if renderDirectory != nil { timers.append(Timer.scheduledTimer(withTimeInterval: 120, repeats: false) { _ in fputs("Render timed out\n", stderr); exit(1) }) } } else { connect(); timers.append(Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in self?.checkUpdates() }); timers.append(Timer.scheduledTimer(withTimeInterval: 21600, repeats: true) { [weak self] _ in self?.checkUpdates() }) }
+        if demo { signedIn = true; account = "demo@example.com"; usage = Usage(windows: [Quota(minutes: 300, remaining: 72, reset: Date().timeIntervalSince1970+15540), Quota(minutes: 10080, remaining: 67, reset: Date().timeIntervalSince1970+273960)], plan: "prolite", resets: 2); status = ""; if renderDirectory != nil {
+            let scenario = ProcessInfo.processInfo.environment["CODEXMETER_RENDER_SCENARIO"] ?? "pair"
+            usage.windows[0] = Quota(minutes: 300, remaining: 100, reset: Date().timeIntervalSince1970+14400)
+            usage.windows[1] = Quota(minutes: 10080, remaining: 9, reset: Date().timeIntervalSince1970+500000)
+            usage.creditBalance = "123.45"
+            if scenario == "hours" { usage.windows.removeLast() }
+            if scenario == "week" { usage.windows.removeFirst() }
+            if scenario == "compact" { selectedMinutes = 300 }
+            timers.append(Timer.scheduledTimer(withTimeInterval: 120, repeats: false) { _ in fputs("Render timed out\n", stderr); exit(1) }) } } else { connect(); timers.append(Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in self?.checkUpdates() }); timers.append(Timer.scheduledTimer(withTimeInterval: 21600, repeats: true) { [weak self] _ in self?.checkUpdates() }) }
     }
     func makeWeb(kind: String) -> WKWebView {
         let config = WKWebViewConfiguration(); config.userContentController.add(self, name: "meter")
@@ -127,7 +136,7 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         sendAll()
     }
     func trayDoubleClick() { hover.orderOut(nil); if widget.isVisible && width >= 799 { widget.orderOut(nil) } else { widget.orderFrontRegardless(); if width < 799 { compactFrame = nil; toggleSize() } } }
-    func hoverHeight() -> CGFloat { let ornate = library.themes.first(where: { $0.id == (previewSkin ?? skinID) })?.values["kind"] as? String == "space"; return (usage.windows.count > 1 ? 620 : 450) + (ornate ? 50 : 0) }
+    func hoverHeight() -> CGFloat { let ornate = library.themes.first(where: { $0.id == (previewSkin ?? skinID) })?.values["kind"] as? String == "space"; return (usage.windows.count > 1 ? 620 : 450) + (ornate ? 50 : 0) + (usage.creditBalance.isEmpty ? 0 : 35) }
     func showHover() { guard let button = statusItem.button, let window = button.window else { return }; send(hoverWeb); let rect = window.convertToScreen(button.convert(button.bounds, to: nil)); let screen = window.screen?.visibleFrame ?? NSScreen.main!.visibleFrame; let h = hoverHeight(); let frame = NSRect(x: min(max(rect.midX-280, screen.minX), screen.maxX-560), y: max(screen.minY, rect.minY-h-8), width: 560, height: h); hover.setFrame(frame, display: true); hover.orderFrontRegardless() }
     func connect(completion: ((Bool) -> Void)? = nil) {
         guard !demo else { completion?(true); return }
@@ -156,13 +165,15 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
             case .success(let data):
                 if let account = data["account"] as? [String: Any], account["type"] as? String == "chatgpt" {
                     self.signedIn = true; self.account = account["email"] as? String ?? ""
+                    self.accountPlan = account["planType"] as? String ?? ""
+                    if self.usage.plan.isEmpty { self.usage.plan = self.accountPlan }
                     self.rpc.call("account/rateLimits/read") { [weak self] limits in
                         guard let self = self else { return }
-                        switch limits { case .success(let data): self.usage = Usage.parse(data); self.status = ""; self.connectionError = ""
+                        switch limits { case .success(let data): self.usage = Usage.parse(data); if self.usage.plan.isEmpty { self.usage.plan = self.accountPlan }; self.status = ""; self.connectionError = ""
                         case .failure(let error): self.status = "Данные устарели"; self.connectionError = error.localizedDescription }
                         self.sendAll()
                     }
-                } else { self.signedIn = false; self.account = ""; if !self.loginBusy { self.status = "Требуется вход в ChatGPT" }; self.sendAll() }
+                } else { self.signedIn = false; self.account = ""; self.accountPlan = ""; self.usage = Usage(); if !self.loginBusy { self.status = "Требуется вход в ChatGPT" }; self.sendAll() }
             case .failure(let error): self.status = "Не удалось подключиться к Codex"; self.connectionError = error.localizedDescription; self.sendAll()
             }
         }
@@ -256,16 +267,16 @@ final class MeterApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler, W
         }
         save(); sendAll()
     }
-    func renderNext() { guard renderDirectory != nil else { return }; if renderIndex >= library.themes.count { print("PASS: rendered all \(renderIndex) macOS skins"); NSApp.terminate(nil); return }; renderPhase = "widget"; skinID = library.themes[renderIndex].id; width = 500; resizeWidget(); send(widgetWeb) }
-    func captureRender() { guard let directory = renderDirectory, renderIndex < library.themes.count else { return }; renderCapturing = true; let id = library.themes[renderIndex].id; widgetWeb.takeSnapshot(with: nil) { image, error in guard let image = image, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let data = rep.representation(using: .png, properties: [:]) else { fputs("Snapshot failed\n", stderr); exit(1) }; do { try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true); try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(id+".png")) } catch { exit(1) }; self.renderPhase = "hover"; self.hover.setFrame(NSRect(x: 80, y: 80, width: 560, height: self.hoverHeight()), display: true); self.hover.orderFrontRegardless(); self.send(self.hoverWeb) } }
+    func renderNext() { guard renderDirectory != nil else { return }; if renderIndex >= library.themes.count { print("PASS: rendered all \(renderIndex) macOS skins"); NSApp.terminate(nil); return }; renderPhase = "widget"; skinID = library.themes[renderIndex].id; width = ProcessInfo.processInfo.environment["CODEXMETER_RENDER_SCENARIO"] == "compact" ? 200 : 500; resizeWidget(); send(widgetWeb) }
+    func captureRender() { guard let directory = renderDirectory, renderIndex < library.themes.count else { return }; renderCapturing = true; let id = library.themes[renderIndex].id; widgetWeb.takeSnapshot(with: nil) { image, error in guard let image = image, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let data = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) else { fputs("Snapshot failed\n", stderr); exit(1) }; do { try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true); try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(id+".jpg")) } catch { exit(1) }; self.renderPhase = "hover"; self.hover.setFrame(NSRect(x: 80, y: 80, width: 560, height: self.hoverHeight()), display: true); self.hover.orderFrontRegardless(); self.send(self.hoverWeb) } }
     func captureHoverRender() {
         guard let directory = renderDirectory, renderIndex < library.themes.count else { return }; renderPhase = "capturing-hover"
         let id = library.themes[renderIndex].id
         hoverWeb.evaluateJavaScript("document.querySelector('.panel').scrollHeight <= innerHeight") { value, error in
             guard value as? Bool == true else { fputs("Hover content clipped: \(id)\n", stderr); exit(1) }
             self.hoverWeb.takeSnapshot(with: nil) { image, error in
-                guard let image = image, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let data = rep.representation(using: .png, properties: [:]) else { exit(1) }
-                do { try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(id+"-hover.png")) } catch { exit(1) }
+                guard let image = image, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let data = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) else { exit(1) }
+                do { try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(id+"-hover.jpg")) } catch { exit(1) }
                 self.renderIndex += 1; self.renderCapturing = false; self.renderNext()
             }
         }

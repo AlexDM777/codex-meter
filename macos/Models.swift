@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 import ImageIO
 
-let appVersion = "4.0.1"
+let appVersion = "4.0.2"
 let repository = "AlexDM777/codex-meter"
 let bundleIdentifier = "com.alexdm777.codexmeter"
 let languageCodes = ["ru", "en", "de", "it", "es", "sr", "fr", "pt"]
@@ -25,14 +25,15 @@ struct Usage {
     var windows: [Quota] = []
     var plan = ""
     var resets: Int? = nil
-    var json: [String: Any] { ["windows": windows.map(\.json), "plan": planLabel, "resets": resets.map { $0 as Any } ?? NSNull()] }
+    var creditBalance = ""
+    var json: [String: Any] { ["windows": windows.map(\.json), "plan": planLabel, "creditBalance": creditBalance, "resets": resets.map { $0 as Any } ?? NSNull()] }
     var planLabel: String { switch plan.lowercased() { case "plus": return "PLUS"; case "prolite": return "PRO $100"; default: return plan.isEmpty ? "—" : plan.uppercased() } }
     static func parse(_ data: [String: Any]) -> Usage {
         let buckets = data["rateLimitsByLimitId"] as? [String: Any]
         var bucket = buckets?["codex"] as? [String: Any]
         if bucket == nil, let old = data["rateLimits"] as? [String: Any], old["limitId"] == nil || (old["limitId"] as? String) == "codex" { bucket = old }
         let credits = data["rateLimitResetCredits"] as? [String: Any]
-        return Usage(windows: [Quota.parse(bucket?["primary"]), Quota.parse(bucket?["secondary"])].compactMap { $0 }.sorted { $0.minutes < $1.minutes }, plan: bucket?["planType"] as? String ?? "", resets: (credits?["availableCount"] as? NSNumber)?.intValue)
+        return Usage(windows: [Quota.parse(bucket?["primary"]), Quota.parse(bucket?["secondary"])].compactMap { $0 }.sorted { $0.minutes < $1.minutes }, plan: bucket?["planType"] as? String ?? "", resets: (credits?["availableCount"] as? NSNumber)?.intValue, creditBalance: (bucket?["credits"] as? [String: Any])?["balance"] as? String ?? "")
     }
 }
 struct Theme {
