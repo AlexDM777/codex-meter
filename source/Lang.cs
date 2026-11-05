@@ -10,6 +10,7 @@ public static class Lang {
     public static string Code {get{return code;}set{code=Names.ContainsKey(value??"")?value:SystemLanguage(System.Globalization.CultureInfo.CurrentUICulture.Name);}}
     static readonly string[] Codes={"ru","en","de","it","es","sr","fr","pt"};
     static readonly Dictionary<string,string[]> Strings=new Dictionary<string,string[]>{
+{"Кредиты Codex",new[]{"Кредиты Codex","Codex credits","Codex-Guthaben","Crediti Codex","Créditos de Codex","Codex krediti","Crédits Codex","Créditos do Codex"}},
 {"Проверить обновления программы",new[]{"Проверить обновления программы","Check for app updates","Nach Programmupdates suchen","Verifica aggiornamenti app","Buscar actualizaciones de la app","Proveri ažuriranja programa","Rechercher des mises à jour","Verificar atualizações do aplicativo"}},
 {"Автоматически обновлять программу",new[]{"Автоматически обновлять программу","Update app automatically","Programm automatisch aktualisieren","Aggiorna automaticamente l’app","Actualizar la app automáticamente","Automatski ažuriraj program","Mettre à jour automatiquement","Atualizar o aplicativo automaticamente"}},
 {"Обновить программу",new[]{"Обновить программу","Update app","Programm aktualisieren","Aggiorna app","Actualizar aplicación","Ažuriraj program","Mettre à jour l’application","Atualizar aplicativo"}},

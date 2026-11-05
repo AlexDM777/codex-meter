@@ -47,13 +47,14 @@ public partial class MeterFace {
             else if(width<=240){GlassBar(dc,q,48,63,404,36,night);Fit(dc,value,250,160,205,420,numberInk);}
             else{
                 GlassBar(dc,q,43,43,414,32,night);
-                Fit(dc,q==null?Lang.T("Лимит"):q.Label("Лимит"),250,94,24,425,ink);
+                Fit(dc,Limits.WindowTitle(q),250,94,24,425,ink);
                 Fit(dc,value+"%",250,128,130,425,numberInk);Fit(dc,Lang.T("Осталось"),250,278,20,425,secondary);
                 Fit(dc,Lang.T("Сброс через")+" "+(q==null?"—":q.Countdown),250,323,32,432,ink);
                 Fit(dc,q==null?"—":q.ResetText,250,369,18,425,secondary);
                 dc.DrawLine(new Pen(Solid(night?"#405C7C97":"#40647F9E"),.7),new Point(38,410),new Point(462,410));
-                Fit(dc,Lang.T("Доступно сбросов"),205,440,22,324,secondary);
-                Fit(dc,Limits.ResetCount.HasValue?Limits.ResetCount.Value.ToString():"—",426,423,48,70,accent);
+                Fit(dc,Lang.T("Доступно сбросов"),205,428,22,324,secondary);
+                Fit(dc,Limits.ResetCount.HasValue?Limits.ResetCount.Value.ToString():"—",426,414,40,70,accent);
+                Fit(dc,Limits.CreditLine,250,459,17,400,secondary);
                 if(!string.IsNullOrEmpty(Status)){Fit(dc,Lang.T(Status),250,482,10,430,secondary);}
             }
             dc.Pop();dc.Pop();dc.Pop();

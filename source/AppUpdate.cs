@@ -9,7 +9,7 @@ using System.Collections.Generic;
 namespace CodexMeter {
 public sealed class ReleaseUpdate {public string Version,Url,Hash;public long Size;}
 public sealed class AppUpdate {
-    public const string CurrentVersion="4.0.1";public const string AssetName="CodexMeter-update-win-x64.zip";
+    public const string CurrentVersion="4.0.2";public const string AssetName="CodexMeter-update-win-x64.zip";
     public readonly string Repository;public ReleaseUpdate Available;public bool Busy;public string Status="";public event Action Changed;
     readonly string root,profile;public AppUpdate(string appRoot,string data){root=appRoot;profile=data;var source=Json.Read(File.ReadAllText(Path.Combine(root,"update-source.json")));Repository=Json.Str(source,"repository");if(!Regex.IsMatch(Repository,"^[A-Za-z0-9-]+/[A-Za-z0-9_.-]+$"))throw new Exception("Invalid GitHub repository");}
     sealed class Client:WebClient {protected override WebRequest GetWebRequest(Uri uri){var r=base.GetWebRequest(uri);r.Timeout=20000;return r;}}

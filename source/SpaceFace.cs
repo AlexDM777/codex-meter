@@ -41,19 +41,21 @@ public partial class MeterFace {
             Quota q=small?SmallQuota:pair?Limits.Windows[i]:Limits.Windows.FirstOrDefault();Brush ink=Solid(Skin.Ink),accent=SpaceAccent(Skin);
             Brush number=q!=null&&q.Remaining<10?Solid(!TrayDisplay.Dark(Skin)?"#B12A1E":"#FF9282"):q!=null&&q.Remaining<20?Solid(!TrayDisplay.Dark(Skin)?"#944C00":"#FFC46D"):ink;
             string value=q==null?"--":Math.Round(q.Remaining,MidpointRounding.AwayFromZero).ToString(CultureInfo.InvariantCulture);dc.PushOpacity(Stale?.5:1);
+            dc.PushTransform(new TranslateTransform(39,30));dc.PushTransform(new ScaleTransform(.844,.86));
             if(width<=160){if(Skin.Id=="heroes3")GameText(dc,value,250,155,155,370,number);else SpaceNumber(dc,value,175,number,false);}
             else if(width<=240){SpaceBar(dc,q,true);if(Skin.Id=="heroes3")GameText(dc,value,250,170,150,370,number);else SpaceNumber(dc,value,190,number,false);}
             else{
-                SpaceBar(dc,q,false);GameText(dc,q==null?Lang.T("Лимит"):q.Label("Лимит"),250,game?120:102,23,370,ink);
+                SpaceBar(dc,q,false);GameText(dc,Limits.WindowTitle(q),250,game?120:102,23,370,ink);
                 if(Skin.Id=="heroes3"||Skin.Id=="diablo"||Skin.Id=="vicecity"||Skin.IsCustom&&Skin.Font!="digital")GameText(dc,value+"%",250,151,116,370,number);else SpaceNumber(dc,value,game?153:147,number,true,400,game?.82:1);
                 GameText(dc,Lang.T("Осталось"),250,game?280:300,19,370,ink);
                 GameText(dc,Lang.T("Сброс через")+" "+(q==null?"—":q.Countdown),250,game?307:320,26,370,Skin.Id=="imperial"?ink:accent);
                 GameText(dc,q==null?"—":q.ResetText,250,game?343:360,17,370,ink);
                 dc.DrawLine(new Pen(ink,.6),new Point(52,game?372:394),new Point(448,game?372:394));
                 GameText(dc,Lang.T("Доступно сбросов"),210,game?388:412,18,304,ink);GameText(dc,Limits.ResetCount.HasValue?Limits.ResetCount.Value.ToString():"—",416,game?377:398,game?34:40,52,ink);
-                if(!string.IsNullOrEmpty(Status))GameText(dc,Lang.T(Status),250,477,10,380,ink);
+                GameText(dc,Limits.CreditLine,250,game?416:438,17,340,ink);
+                if(!string.IsNullOrEmpty(Status))GameText(dc,Lang.T(Status),250,game?439:462,10,350,ink);
             }
-            dc.Pop();dc.Pop();dc.Pop();dc.Pop();
+            dc.Pop();dc.Pop();dc.Pop();dc.Pop();dc.Pop();dc.Pop();
         }
     }
 }

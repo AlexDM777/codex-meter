@@ -98,9 +98,10 @@ public class TrayHover : Form {
         skin=theme;limits=values??new Limits();account=name??"";loggedIn=signedIn;stale=isStale;updated=lastUpdated;status=message??"";
         string file=skin!=null&&skin.Kind!="glass"?skin.Background:"";
         if(file!=texturePath){if(texture!=null){texture.Dispose();texture=null;}texturePath=file;if(file.Length>0)texture=SkinImage.Bitmap(file);}
-        decorPadding=DecorPadding(skin);int targetWidth=500+2*decorPadding,targetHeight=170+Math.Max(1,limits.Windows.Count)*154+2*decorPadding;
+        decorPadding=DecorPadding(skin);int targetWidth=500+2*decorPadding,targetHeight=170+Math.Max(1,limits.Windows.Count)*154+2*decorPadding+(limits.CreditLine.Length>0?25:0);
         if(ClientSize.Width!=targetWidth||ClientSize.Height!=targetHeight){ClientSize=new Size(targetWidth,targetHeight);using(var path=Round(new RectangleF(0,0,Width,Height),20)){var old=Region;Region=new Region(path);if(old!=null)old.Dispose();}}
-        int footerY=78+Math.Max(1,limits.Windows.Count)*154+40;
+        int creditHeight=limits.CreditLine.Length>0?25:0;
+        int footerY=78+Math.Max(1,limits.Windows.Count)*154+40+creditHeight;
         settingsButton.Location=new Point(decorPadding+440,decorPadding+footerY);settingsTip.SetToolTip(settingsButton,Lang.T("Настройки"));settingsButton.Invalidate();
         updateButton.Location=new Point(decorPadding+392,decorPadding+footerY);updateButton.Invalidate();
         if(Visible)Location=Place(anchor,Size,Screen.GetWorkingArea(anchor));Invalidate();
@@ -147,6 +148,7 @@ public class TrayHover : Form {
         if(limits.Windows.Count==0){DrawLabel(g,loggedIn?Lang.T("Лимиты пока недоступны"):Lang.T("Требуется вход в ChatGPT"),new RectangleF(28,y,444,120),20,ink);y+=154;}
         DrawLabel(g,Lang.T("Доступно сбросов"),new RectangleF(28,y,358,30),15,muted);
         DrawLabel(g,limits.ResetCount.HasValue?limits.ResetCount.Value.ToString():"—",new RectangleF(388,y-3,84,36),28,accent,true,StringAlignment.Far);
+        if(limits.CreditLine.Length>0){DrawLabel(g,limits.CreditLine,new RectangleF(28,y+30,444,25),14,ink);y+=25;}
         if(!string.IsNullOrEmpty(updateText))DrawLabel(g,updateText,new RectangleF(28,y+43,354,24),13,updateAvailable?accent:muted,updateAvailable);
         string notice=stale?Lang.T("Данные устарели"):Lang.T(status);DrawLabel(g,notice,new RectangleF(28,y+69,354,20),12,muted);
         g.Restore(contentState);

@@ -40,7 +40,11 @@ public class Quota {
 }
 public class Limits {
     public Quota Primary,Secondary;
-    public string PlanType=""; public int? ResetCount;
+    public string PlanType="", CreditBalance=""; public int? ResetCount;
+    public string CreditLine { get { return string.IsNullOrWhiteSpace(CreditBalance)?"":Lang.T("Кредиты Codex")+": "+CreditBalance; } }
+    public string ResetLine { get { return ResetCount.HasValue?Lang.T("Доступно сбросов")+": "+ResetCount.Value:""; } }
+    public string Footer { get { return string.Join("   ·   ",new[]{ResetLine,CreditLine}.Where(v=>v.Length>0)); } }
+    public string WindowTitle(Quota q) { return (q==null?Lang.T("Лимит"):q.Label("Лимит"))+(string.IsNullOrEmpty(PlanType)?"":"  ·  "+PlanLabel); }
     public List<Quota> Windows { get { return new[]{Primary,Secondary}.Where(q=>q!=null).OrderBy(q=>q.Minutes>0?q.Minutes:int.MaxValue).ToList(); } }
     public bool Square { get { return PlanType.StartsWith("pro",StringComparison.OrdinalIgnoreCase); } }
     public string PlanLabel { get { switch(PlanType.ToLowerInvariant()) { case "plus":return "PLUS"; case "prolite":return "PRO $100"; default:return string.IsNullOrEmpty(PlanType)?"PLAN UNKNOWN":PlanType.ToUpperInvariant(); } } }
@@ -52,7 +56,8 @@ public class Limits {
             if(legacy!=null && (Json.Str(legacy,"limitId")=="codex" || string.IsNullOrEmpty(Json.Str(legacy,"limitId")))) selected=legacy;
         }
         var resets=Json.Map(Json.Get(data,"rateLimitResetCredits"));
-        return new Limits { Primary=Quota.Parse(Json.Get(selected,"primary")), Secondary=Quota.Parse(Json.Get(selected,"secondary")), PlanType=Json.Str(selected,"planType"), ResetCount=Json.Get(resets,"availableCount")==null?(int?)null:Convert.ToInt32(Json.Get(resets,"availableCount")) };
+        var credits=Json.Map(Json.Get(selected,"credits"));
+        return new Limits { Primary=Quota.Parse(Json.Get(selected,"primary")), Secondary=Quota.Parse(Json.Get(selected,"secondary")), PlanType=Json.Str(selected,"planType"), CreditBalance=Json.Str(credits,"balance"), ResetCount=Json.Get(resets,"availableCount")==null?(int?)null:Convert.ToInt32(Json.Get(resets,"availableCount")) };
     }
 }
 public class Skin {
@@ -121,7 +126,7 @@ public partial class MeterFace : FrameworkElement {
         } else dc.DrawImage(background,new Rect(0,0,1000,450));
         Brush ink=(Brush)new BrushConverter().ConvertFromString(Skin.Ink);
         dc.PushOpacity(Stale?0.48:1);
-        Text(dc,Limits.ResetCount.HasValue?Lang.T("Доступно сбросов")+": "+Limits.ResetCount.Value:"",500,12,19,ink,"Consolas",true);
+        if(Limits.Windows.Count!=2)Fit(dc,string.IsNullOrEmpty(Limits.PlanType)?"":Limits.PlanLabel,500,17,23,860,ink);
         var windows=Limits.Windows;
         if(windows.Count==0) {
             Text(dc,"—",500,125,110,ink,"Consolas",true);
@@ -136,10 +141,12 @@ public partial class MeterFace : FrameworkElement {
                 else Lcd(dc,0,windows[i],"LIMIT",10,ink);
                 dc.Pop();dc.Pop();dc.Pop();
                 double cx=windows.Count==1?500:i*500+250;
-                Text(dc,Lang.T("Осталось"),cx,315,16,ink,"Segoe UI",true);
-                Text(dc,windows[i].ResetText,cx,393,16,ink,"Consolas",true);
+                if(windows.Count==2){Fit(dc,string.IsNullOrEmpty(Limits.PlanType)?"":Limits.PlanLabel,cx,17,23,425,ink);Fit(dc,Limits.Footer,cx,398,18,425,ink);}
+                if(Skin.Kind!="analog")Text(dc,Lang.T("Осталось"),cx,315,16,ink,"Segoe UI",true);
+                Text(dc,windows[i].ResetText,cx,375,16,ink,"Consolas",true);
             }
         }
+        if(windows.Count!=2)Fit(dc,Limits.Footer,500,398,18,850,ink);
         dc.Pop();
         if(!string.IsNullOrEmpty(Status)) {
             dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(224,23,34,37)),null,new Rect(20,417,960,27),5,5);
@@ -159,15 +166,15 @@ public partial class MeterFace : FrameworkElement {
         for(int i=0;i<windows.Count;i++) {
             bool pair=windows.Count==2;
             double scale=pair?.48:.84;
-            double x=pair?10+i*250:40,y=pair?135:90;
+            double x=pair?10+i*250:40,y=pair?108:57;
             dc.PushTransform(new TranslateTransform(x,y));dc.PushTransform(new ScaleTransform(scale,scale));
             if(Skin.Kind=="analog")Analog(dc,0,windows[i],"LIMIT",ink);else Lcd(dc,0,windows[i],"LIMIT",10,ink);
             dc.Pop();dc.Pop();
             double cx=pair?130+i*250:250;
-            Text(dc,Lang.T("Осталось"),cx,pair?295:363,14,ink,"Segoe UI",true);
-            Text(dc,windows[i].ResetText,cx,pair?342:434,14,ink,"Consolas",true);
+            Text(dc,windows[i].ResetText,cx,pair?324:416,14,ink,"Consolas",true);
         }
-        Text(dc,Limits.ResetCount.HasValue?Lang.T("Доступно сбросов")+": "+Limits.ResetCount.Value:"",250,windows.Count==2?437:468,20,ink,"Consolas",true);
+        Fit(dc,string.IsNullOrEmpty(Limits.PlanType)?"":Limits.PlanLabel,250,28,24,400,ink);
+        Fit(dc,Limits.Footer,250,443,18,400,ink);
         dc.Pop();
         if(!string.IsNullOrEmpty(Status)) {
             dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(235,23,34,37)),null,new Rect(12,470,476,24),4,4);
@@ -232,7 +239,7 @@ public partial class MeterFace : FrameworkElement {
     void Analog(DrawingContext dc,double ox,Quota q,string fallback,Brush ink) {
         double cx=ox+250,cy=320;
         Brush red=new SolidColorBrush(Color.FromRgb(168,42,25));
-        Text(dc,q==null?fallback:q.Label(fallback),cx,28,27,ink,"Georgia",true);
+        Fit(dc,q==null?fallback:q.Label(fallback),cx,14,26,420,ink);
         Curve(dc,0,10,cx,cy,220,new Pen(red,7));Curve(dc,10,100,cx,cy,220,new Pen(ink,3));
         for(int i=0;i<=100;i+=5){Brush b=i<10?red:ink;dc.DrawLine(new Pen(b,i%10==0?2.5:1.3),ArcPoint(i,cx,cy,221),ArcPoint(i,cx,cy,i%10==0?201:210));if(i%20==0){Point p=ArcPoint(i,cx,cy,249);Text(dc,i.ToString(),p.X,p.Y-11,21,b,"Georgia",true);}}
         if(q!=null) {
@@ -245,7 +252,14 @@ public partial class MeterFace : FrameworkElement {
         dc.DrawLine(new Pen(ink,.8),new Point(ox+35,351),new Point(ox+465,351));
         Fit(dc,Lang.T("Сброс через")+" "+(q==null?"—":q.Countdown),cx,359,30,440,ink);
     }
-    public void Export(string path,int size=0) { var visual=new DrawingVisual();using(var dc=visual.RenderOpen()){DrawFace(dc,size>0?size:(Skin.Kind=="glass"||Skin.Kind=="space")?1000:Limits.Square?500:1000,size>0?size:(Skin.Kind=="glass"||Skin.Kind=="space")?(int)(1000*Aspect(1000)):Limits.Square?500:450);}var bitmap=new RenderTargetBitmap(size>0?size:(Skin.Kind=="glass"||Skin.Kind=="space")?1000:Limits.Square?500:1000,size>0?size:(Skin.Kind=="glass"||Skin.Kind=="space")?(int)(1000*Aspect(1000)):Limits.Square?500:450,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var file=File.Create(path)){png.Save(file);} }
+    public void Export(string path,int size=0) {
+        int width=size>0?size:Limits.Square?500:1000;
+        int height=(int)Math.Round(width*Aspect(width));
+        var visual=new DrawingVisual();using(var dc=visual.RenderOpen())DrawFace(dc,width,height);
+        var bitmap=new RenderTargetBitmap(width,height,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);
+        BitmapEncoder encoder=path.EndsWith(".jpg",StringComparison.OrdinalIgnoreCase)?(BitmapEncoder)new JpegBitmapEncoder{QualityLevel=90}:new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var file=File.Create(path))encoder.Save(file);
+    }
 }
 public class Rpc : IDisposable {
     Process process; Task readTask,errorTask; readonly ConcurrentDictionary<int,TaskCompletionSource<Dictionary<string,object>>> pending=new ConcurrentDictionary<int,TaskCompletionSource<Dictionary<string,object>>>();
@@ -260,7 +274,7 @@ public class Rpc : IDisposable {
         process=new Process{StartInfo=info};process.Start();
         readTask=Task.Run(async delegate { try { while(!disposed) { string line=await process.StandardOutput.ReadLineAsync();if(line==null)break;OnLine(line); } }catch {}finally{FailAll();if(!disposed&&Disconnected!=null)Disconnected();} });
         errorTask=Task.Run(async delegate {try{while(await process.StandardError.ReadLineAsync()!=null){}}catch{}});
-        await Call("initialize",new{clientInfo=new{name="codex_meter",title="Codex Meter",version="4.0.1"}});
+        await Call("initialize",new{clientInfo=new{name="codex_meter",title="Codex Meter",version="4.0.2"}});
         Send(new{method="initialized",@params=new{}});
     }
     void OnLine(string line) {
@@ -387,7 +401,7 @@ public partial class Widget : Window {
         var reloadSkins=new MenuItem{Header="Обновить список"};reloadSkins.Click+=delegate{try{ReloadCustomSkins();}catch(Exception e){MessageBox.Show(this,e.Message,Lang.T("Пользовательские скины"));}};custom.Items.Add(reloadSkins);
         if(customSkinErrors.Count>0)custom.Items.Add(new MenuItem{Header=Lang.T("Не загружено")+": "+customSkinErrors.Count,IsEnabled=false,ToolTip=string.Join("\n",customSkinErrors)});
         preferences.Items.Add(custom);
-        var planItem=new MenuItem{Header="Тариф",IsEnabled=false};preferences.Items.Add(planItem);preferences.Items.Add(new MenuItem{Header="CodexMeter 4.0.1 Lite",IsEnabled=false});
+        var planItem=new MenuItem{Header="Тариф",IsEnabled=false};preferences.Items.Add(planItem);preferences.Items.Add(new MenuItem{Header="CodexMeter 4.0.2 Lite",IsEnabled=false});
         var languages=new MenuItem{Header="Язык"};foreach(var language in Lang.Names){string code=language.Key;var item=new MenuItem{Header=SkinOptions.Language(code,language.Value),Tag=code,ToolTip=language.Value,IsCheckable=true,IsChecked=Lang.Code==code};item.Click+=delegate{Lang.Code=code;SaveSettings();BuildMenu();UpdateStatus();face.ToolTip=Lang.T("Перетащите мышью • ПКМ: настройки • Колесо: размер");face.InvalidateVisual();UpdateTrayText();};languages.Items.Add(item);}preferences.Items.Add(languages);
         var autorun=new MenuItem{Header="Запускать с Windows",IsCheckable=true};autorun.Click+=delegate{try{startup.Set(autorun.IsChecked);startupDesired=autorun.IsChecked;hasStartupPreference=true;SaveSettings();}catch(Exception e){autorun.IsChecked=startup.Enabled;MessageBox.Show(this,e.Message,Lang.T("Автозапуск"));}};preferences.Items.Add(autorun);
         var trayOption=new MenuItem{Header="Значок в трее",IsCheckable=true};trayOption.Click+=delegate{trayEnabled=trayOption.IsChecked;EnsureRecovery();SetupTray();if(!trayEnabled)ShowDisplay();SaveSettings();};preferences.Items.Add(trayOption);
@@ -405,8 +419,8 @@ public partial class Widget : Window {
         var cancel=new MenuItem{Header="Отменить вход"};cancel.Click+=async delegate{if(rpc!=null&&loginId!=null){try{await rpc.Call("account/login/cancel",new{loginId=loginId});}catch{}}loginPending=false;loginId=null;loginUrl=null;UpdateStatus();};preferences.Items.Add(cancel);
         var link=new MenuItem{Header="Открыть страницу входа повторно"};link.Click+=delegate{if(loginUrl!=null)OpenLogin(loginUrl);};preferences.Items.Add(link);
 
-        var help=new MenuItem{Header="Как пользоваться"};help.Click+=delegate{MessageBox.Show(this,Lang.T("Тариф и версия доступны в настройках. Перетащите виджет мышью. Колесо меняет размер. Двойной клик раскрывает виджет; повторный возвращает прежний размер. Через меню можно выбрать лимит, сделать снимок и настроить автозапуск."),"CodexMeter 4.0.1 Lite");};preferences.Items.Add(help);
-        var quit=new MenuItem{Header=Lang.T("Выход из приложения")};quit.Click+=delegate{Quit();};preferences.Items.Add(quit);face.ContextMenu=menu;Lang.Menu(menu);
+        var help=new MenuItem{Header="Как пользоваться"};help.Click+=delegate{MessageBox.Show(this,Lang.T("Тариф и версия доступны в настройках. Перетащите виджет мышью. Колесо меняет размер. Двойной клик раскрывает виджет; повторный возвращает прежний размер. Через меню можно выбрать лимит, сделать снимок и настроить автозапуск."),"CodexMeter 4.0.2 Lite");};preferences.Items.Add(help);
+        var quit=new MenuItem{Header=Lang.T("Выход из приложения")};quit.Click+=delegate{Quit();};menu.Items.Add(new Separator());menu.Items.Add(quit);face.ContextMenu=menu;Lang.Menu(menu);
         menu.Opened+=delegate{UpdateUpdateControls();fixedSkin.IsChecked=!randomSkinOnStartup;randomSkin.IsChecked=randomSkinOnStartup;planItem.Header=Lang.T("Тариф")+": "+face.Limits.PlanLabel;
             quotaChoice.Items.Clear();
             var auto=new MenuItem{Header=Lang.T("Авто · неделя, иначе самое длительное окно"),IsCheckable=true,IsChecked=face.SelectedMinutes==0};auto.Click+=delegate{face.SelectedMinutes=0;face.InvalidateVisual();UpdateTrayText();SaveSettings();};quotaChoice.Items.Add(auto);
@@ -505,6 +519,21 @@ public static class Program {
     [STAThread] public static int Main(string[] args) {
         string root=AppDomain.CurrentDomain.BaseDirectory;
         try {
+            if(args.Length==2 && args[0]=="--layout-audit"){
+                Directory.CreateDirectory(args[1]);
+                foreach(var skin in Skin.Load(root))foreach(string scenario in new[]{"hours","week","pair","compact","pro-hours","pro-pair"}){
+                    var f=new MeterFace();f.SetSkin(skin);f.Limits=DemoLimits();
+                    f.Limits.Primary.Remaining=100;f.Limits.Secondary.Remaining=9;f.Limits.CreditBalance="123.45";
+                    f.Limits.Primary.Reset=DateTimeOffset.Now.ToUnixTimeSeconds()+14400;
+                    f.Limits.Secondary.Reset=DateTimeOffset.Now.ToUnixTimeSeconds()+500000;
+                    if(scenario=="hours"||scenario=="pro-hours")f.Limits.Secondary=null;
+                    if(scenario=="pro-hours"||scenario=="pro-pair")f.Limits.PlanType="pro";
+                    if(scenario=="compact")f.SelectedMinutes=300;
+                    if(scenario=="week"){f.Limits.Primary=null;f.Limits.PlanType="prolite";}
+                    f.Export(Path.Combine(args[1],skin.Number.ToString("00")+"-"+scenario+".jpg"),scenario=="compact"?200:500);
+                }
+                return 0;
+            }
             if(args.Length>0 && args[0]=="--render"){
                 RenderOptions.ProcessRenderMode=System.Windows.Interop.RenderMode.SoftwareOnly;
                 string output=args[1];Directory.CreateDirectory(output);
