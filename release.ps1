@@ -1,4 +1,4 @@
-﻿param([string]$Version='4.0.1')
+﻿param([string]$Version='4.0.2')
 $ErrorActionPreference='Stop'
 $root=$PSScriptRoot
 $declared=[regex]::Match((Get-Content (Join-Path $root 'source/AppUpdate.cs') -Raw),'CurrentVersion="([^"]+)"').Groups[1].Value
